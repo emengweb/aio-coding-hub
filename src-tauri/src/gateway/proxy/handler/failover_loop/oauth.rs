@@ -21,7 +21,7 @@ pub(super) fn resolve_oauth_adapter_for_provider(
 /// For `api_key` mode, returns the plaintext key.
 /// For `oauth` mode, checks token freshness and refreshes inline if needed.
 pub(super) async fn resolve_effective_credential(
-    state: &crate::gateway::manager::GatewayAppState,
+    state: &crate::gateway::runtime::GatewayAppState,
     cli_key: &str,
     provider: &crate::providers::ProviderForGateway,
 ) -> crate::shared::error::AppResult<String> {
@@ -148,7 +148,7 @@ pub(super) async fn resolve_effective_credential(
 
 /// After a 401 response, attempt to refresh OAuth token and return the new credential.
 pub(super) async fn refresh_oauth_credential_after_401(
-    state: &crate::gateway::manager::GatewayAppState,
+    state: &crate::gateway::runtime::GatewayAppState,
     cli_key: &str,
     provider: &crate::providers::ProviderForGateway,
 ) -> crate::shared::error::AppResult<String> {

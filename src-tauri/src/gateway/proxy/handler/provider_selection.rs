@@ -1,6 +1,6 @@
 use super::provider_order;
-use crate::gateway::manager::GatewayAppState;
 use crate::gateway::proxy::failover::should_reuse_provider;
+use crate::gateway::runtime::GatewayAppState;
 use crate::providers;
 use crate::{circuit_breaker, session_manager};
 

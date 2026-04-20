@@ -5,7 +5,7 @@ use crate::shared::mutex_ext::MutexExt;
 use std::collections::HashSet;
 use std::time::Duration;
 
-use crate::gateway::manager::GatewayAppState;
+use crate::gateway::runtime::GatewayAppState;
 use crate::gateway::util::now_unix_millis;
 
 #[derive(Debug, Clone, Copy)]

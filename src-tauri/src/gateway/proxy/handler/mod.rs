@@ -83,7 +83,7 @@ fn build_in_progress_request_log_args(
 // ---------------------------------------------------------------------------
 
 pub(in crate::gateway) async fn proxy_impl(
-    state: crate::gateway::manager::GatewayAppState,
+    state: crate::gateway::runtime::GatewayAppState,
     cli_key: String,
     forwarded_path: String,
     req: Request<Body>,

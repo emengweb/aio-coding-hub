@@ -1,7 +1,10 @@
+mod background_tasks;
 mod billing_header_rectifier;
+mod binder;
 mod claude_metadata_user_id_injection;
 pub(crate) mod cli_auth;
 mod codex_session_id;
+mod control_service;
 pub(crate) mod events;
 pub(crate) mod http_client;
 pub(crate) mod listen;
@@ -10,6 +13,7 @@ pub(crate) mod oauth;
 mod proxy;
 mod response_fixer;
 mod routes;
+mod runtime;
 pub(crate) mod session_manager;
 mod streams;
 mod thinking_budget_rectifier;
@@ -44,12 +48,12 @@ pub struct GatewayProviderCircuitStatus {
 pub(crate) fn planned_base_url(
     cfg: &settings::AppSettings,
 ) -> crate::shared::error::AppResult<String> {
-    manager::planned_base_url(cfg)
+    binder::planned_base_url(cfg)
 }
 
 pub(crate) fn listen_rebind_required(
     previous: &settings::AppSettings,
     next: &settings::AppSettings,
 ) -> bool {
-    manager::listen_rebind_required(previous, next)
+    binder::listen_rebind_required(previous, next)
 }

@@ -4,13 +4,13 @@
 //! the request reaches the failover/forwarder stage.
 
 use super::SpecialSettings;
-use crate::gateway::manager::GatewayAppState;
 use crate::gateway::proxy::errors::error_response;
 use crate::gateway::proxy::request_end::{
     emit_request_event_and_enqueue_request_log, emit_request_event_and_spawn_request_log,
     RequestEndArgs, RequestEndDeps,
 };
 use crate::gateway::proxy::{ErrorCategory, GatewayErrorCode};
+use crate::gateway::runtime::GatewayAppState;
 use crate::shared::mutex_ext::MutexExt;
 use axum::http::StatusCode;
 use axum::response::Response;

@@ -28,8 +28,8 @@ pub(super) use request_fingerprint::RequestFingerprintMiddleware;
 pub(super) use runtime_settings_reader::RuntimeSettingsMiddleware;
 pub(super) use warmup_interceptor::WarmupInterceptorMiddleware;
 
-use crate::gateway::manager::GatewayAppState;
 use crate::gateway::proxy::request_context::RequestContextParts;
+use crate::gateway::runtime::GatewayAppState;
 use crate::gateway::util::RequestedModelLocation;
 use crate::providers;
 use axum::body::{Body, Bytes};

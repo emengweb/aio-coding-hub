@@ -2,12 +2,12 @@
 
 use super::{emit_request_event_and_enqueue_request_log, RequestEndArgs, RequestEndDeps};
 use crate::gateway::events::FailoverAttempt;
-use crate::gateway::manager::GatewayAppState;
 use crate::gateway::proxy::abort_guard::RequestAbortGuard;
 use crate::gateway::proxy::caches::CachedGatewayError;
 use crate::gateway::proxy::errors::{error_response, error_response_with_retry_after};
 use crate::gateway::proxy::GatewayErrorCode;
 use crate::gateway::response_fixer;
+use crate::gateway::runtime::GatewayAppState;
 use crate::gateway::util::now_unix_seconds;
 use crate::shared::mutex_ext::MutexExt;
 use axum::http::StatusCode;

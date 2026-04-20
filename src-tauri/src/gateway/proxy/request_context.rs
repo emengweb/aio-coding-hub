@@ -1,8 +1,8 @@
 //! Usage: Request context (SSOT) for gateway proxy forwarding.
 
 use super::abort_guard::RequestAbortGuard;
-use crate::gateway::manager::GatewayAppState;
 use crate::gateway::response_fixer;
+use crate::gateway::runtime::GatewayAppState;
 use crate::gateway::util::{strip_hop_headers, RequestedModelLocation};
 use crate::infra::settings::MIN_UPSTREAM_STREAM_IDLE_TIMEOUT_SECONDS;
 use crate::providers;
