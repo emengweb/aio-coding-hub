@@ -1,11 +1,12 @@
 //! Usage: Gateway lifecycle / status / session / circuit commands.
 
-use crate::app_state::{ensure_db_ready, DbInitState, GatewayState};
+use crate::app_state::{
+    ensure_db_ready, with_app_gateway_manager, with_app_gateway_manager_mut, with_gateway_manager,
+    DbInitState, GatewayState,
+};
 use crate::commands::limit::normalize_limit;
 use crate::gateway::events::GATEWAY_STATUS_EVENT_NAME;
-use crate::shared::mutex_ext::MutexExt;
 use crate::{blocking, cli_proxy, gateway, providers, request_logs, settings, wsl};
-use tauri::Manager;
 
 const GATEWAY_SESSIONS_DEFAULT_LIMIT: u32 = 50;
 const GATEWAY_SESSIONS_MAX_LIMIT: u32 = 200;
@@ -66,8 +67,7 @@ pub(crate) struct GatewayActiveSessionSummary {
 #[tauri::command]
 #[specta::specta]
 pub(crate) fn gateway_status(state: tauri::State<'_, GatewayState>) -> gateway::GatewayStatus {
-    let manager = state.0.lock_or_recover();
-    manager.status()
+    with_gateway_manager(state.inner(), |manager| manager.status())
 }
 
 #[tauri::command]
@@ -128,10 +128,9 @@ pub(crate) async fn gateway_sessions_list(
         .map(|d| d.as_secs() as i64)
         .unwrap_or(0);
 
-    let sessions = {
-        let manager = state.0.lock_or_recover();
+    let sessions = with_gateway_manager(state.inner(), |manager| {
         manager.active_sessions(now_unix, limit)
-    };
+    });
 
     if sessions.is_empty() {
         return Ok(Vec::new());
@@ -197,9 +196,7 @@ pub(crate) async fn gateway_circuit_status(
 ) -> Result<Vec<gateway::GatewayProviderCircuitStatus>, String> {
     let db = ensure_db_ready(app.clone(), db_state.inner()).await?;
     blocking::run("gateway_circuit_status", move || {
-        let state = app.state::<GatewayState>();
-        let manager = state.0.lock_or_recover();
-        manager.circuit_status(&app, &db, &cli_key)
+        with_app_gateway_manager(&app, |manager| manager.circuit_status(&app, &db, &cli_key))
     })
     .await
     .map_err(Into::into)
@@ -216,9 +213,9 @@ pub(crate) async fn gateway_circuit_reset_provider(
     blocking::run(
         "gateway_circuit_reset_provider",
         move || -> crate::shared::error::AppResult<bool> {
-            let state = app.state::<GatewayState>();
-            let manager = state.0.lock_or_recover();
-            manager.circuit_reset_provider(&db, provider_id)?;
+            with_app_gateway_manager(&app, |manager| {
+                manager.circuit_reset_provider(&db, provider_id)
+            })?;
             Ok(true)
         },
     )
@@ -235,9 +232,7 @@ pub(crate) async fn gateway_circuit_reset_cli(
 ) -> Result<usize, String> {
     let db = ensure_db_ready(app.clone(), db_state.inner()).await?;
     blocking::run("gateway_circuit_reset_cli", move || {
-        let state = app.state::<GatewayState>();
-        let manager = state.0.lock_or_recover();
-        manager.circuit_reset_cli(&db, &cli_key)
+        with_app_gateway_manager(&app, |manager| manager.circuit_reset_cli(&db, &cli_key))
     })
     .await
     .map_err(Into::into)
@@ -255,9 +250,7 @@ pub(crate) async fn gateway_start(
         let app = app.clone();
         let db = db.clone();
         move || {
-            let state = app.state::<GatewayState>();
-            let mut manager = state.0.lock_or_recover();
-            manager.start(&app, db, preferred_port)
+            with_app_gateway_manager_mut(&app, |manager| manager.start(&app, db, preferred_port))
         }
     })
     .await?;

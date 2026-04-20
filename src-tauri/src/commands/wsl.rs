@@ -1,10 +1,10 @@
 //! Usage: Windows WSL related Tauri commands.
 
-use crate::app_state::{ensure_db_ready, DbInitState, GatewayState};
+use crate::app_state::{ensure_db_ready, with_app_gateway_manager_mut, DbInitState};
 #[cfg(windows)]
 use crate::db;
-use crate::shared::mutex_ext::MutexExt;
 use crate::{blocking, gateway, settings, wsl};
+#[cfg(windows)]
 use tauri::Manager;
 
 async fn detect_wsl_blocking(label: &'static str) -> Result<wsl::WslDetection, String> {
@@ -138,9 +138,9 @@ pub(crate) async fn wsl_configure_clients(
         let app = app.clone();
         let db = db.clone();
         move || {
-            let state = app.state::<GatewayState>();
-            let mut manager = state.0.lock_or_recover();
-            manager.start(&app, db, Some(preferred_port))
+            with_app_gateway_manager_mut(&app, |manager| {
+                manager.start(&app, db, Some(preferred_port))
+            })
         }
     })
     .await?;
@@ -209,8 +209,7 @@ pub(crate) async fn wsl_configure_clients(
 /// detects WSL, resolves host, gathers sync data, and configures CLI clients.
 #[cfg(windows)]
 pub(crate) async fn wsl_auto_sync_core(app: &tauri::AppHandle) -> Result<(), String> {
-    use crate::app_state::{ensure_db_ready, DbInitState, GatewayState};
-    use crate::shared::mutex_ext::MutexExt;
+    use crate::app_state::{ensure_db_ready, with_app_gateway_manager, DbInitState};
 
     // 1. Read settings and check preconditions
     let cfg = blocking::run("wsl_core_read_settings", {
@@ -231,16 +230,12 @@ pub(crate) async fn wsl_auto_sync_core(app: &tauri::AppHandle) -> Result<(), Str
     }
 
     // 2. Get gateway port
-    let port = {
-        let state = app.state::<GatewayState>();
-        let manager = state.0.lock_or_recover();
-        let status = manager.status();
-        match status.port {
-            Some(p) => p,
-            None => {
-                tracing::debug!("WSL auto-sync core: gateway not running, skipping");
-                return Ok(());
-            }
+    let status = with_app_gateway_manager(app, |manager| manager.status());
+    let port = match status.port {
+        Some(port) => port,
+        None => {
+            tracing::debug!("WSL auto-sync core: gateway not running, skipping");
+            return Ok(());
         }
     };
 

@@ -1,7 +1,6 @@
 //! Usage: Public test helpers for integration tests.
 
 use std::path::PathBuf;
-use tauri::Manager;
 
 #[cfg(test)]
 use crate::shared::mutex_ext::MutexExt;
@@ -531,21 +530,15 @@ pub fn settings_set_via_command_json<R: tauri::Runtime>(
     let persisted = crate::settings::write(app, &next)?;
     crate::gateway::http_client::sync_from_settings(&persisted)?;
 
-    let gateway_status = if let Some(state) = app.try_state::<crate::app::app_state::GatewayState>()
-    {
-        let manager = state
-            .0
-            .lock()
-            .unwrap_or_else(|poisoned| poisoned.into_inner());
-        manager.status()
-    } else {
-        crate::gateway::GatewayStatus {
-            running: false,
-            port: None,
-            base_url: None,
-            listen_addr: None,
-        }
-    };
+    let gateway_status =
+        crate::app_state::try_with_app_gateway_manager(app, |manager| manager.status()).unwrap_or(
+            crate::gateway::GatewayStatus {
+                running: false,
+                port: None,
+                base_url: None,
+                listen_addr: None,
+            },
+        );
 
     serialize_json(SettingsMutationResult {
         settings: SettingsView::from(&persisted),

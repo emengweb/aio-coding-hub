@@ -1,9 +1,7 @@
 //! Usage: Gateway startup and follow-up sync for bootstrap.
 
-use super::app_state::GatewayState;
-use crate::shared::mutex_ext::MutexExt;
+use super::app_state::with_app_gateway_manager_mut;
 use crate::{blocking, cli_proxy};
-use tauri::Manager;
 
 pub(crate) async fn start(
     app_handle: &tauri::AppHandle,
@@ -17,9 +15,9 @@ pub(crate) async fn start(
         let app_handle = app_handle.clone();
         let db = db.clone();
         move || {
-            let state = app_handle.state::<GatewayState>();
-            let mut manager = state.0.lock_or_recover();
-            manager.start(&app_handle, db, Some(preferred_port))
+            with_app_gateway_manager_mut(&app_handle, |manager| {
+                manager.start(&app_handle, db, Some(preferred_port))
+            })
         }
     })
     .await

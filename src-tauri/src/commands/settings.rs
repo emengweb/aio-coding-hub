@@ -1,8 +1,10 @@
 //! Usage: Settings-related Tauri commands.
 
-use crate::app_state::{ensure_db_ready, DbInitState, GatewayState};
+use crate::app_state::{
+    ensure_db_ready, try_with_app_gateway_manager, with_app_gateway_manager,
+    with_app_gateway_manager_mut, DbInitState,
+};
 use crate::gateway::events::GATEWAY_STATUS_EVENT_NAME;
-use crate::shared::mutex_ext::MutexExt;
 use crate::{blocking, cli_proxy, resident, settings};
 use tauri::Manager;
 
@@ -331,22 +333,19 @@ fn sync_runtime_side_effects(
         resident.set_tray_enabled(next_settings.tray_enabled);
     }
 
-    if let Some(gw) = app.try_state::<GatewayState>() {
-        let manager = gw.0.lock_or_recover();
+    let _ = try_with_app_gateway_manager(app, |manager| {
         manager.update_circuit_config(
             next_settings.circuit_breaker_failure_threshold.max(1),
             (next_settings.circuit_breaker_open_duration_minutes as i64).saturating_mul(60),
         );
-    }
+    });
 
     crate::gateway::http_client::sync_from_settings(next_settings)?;
     Ok(())
 }
 
 fn current_gateway_status(app: &tauri::AppHandle) -> crate::gateway::GatewayStatus {
-    let state = app.state::<GatewayState>();
-    let manager = state.0.lock_or_recover();
-    manager.status()
+    with_app_gateway_manager(app, |manager| manager.status())
 }
 
 async fn start_gateway_with_settings(
@@ -360,9 +359,14 @@ async fn start_gateway_with_settings(
         let app = app.clone();
         let db = db.clone();
         move || {
-            let state = app.state::<GatewayState>();
-            let mut manager = state.0.lock_or_recover();
-            manager.start_with_config(&app, db, &next_settings, Some(next_settings.preferred_port))
+            with_app_gateway_manager_mut(&app, |manager| {
+                manager.start_with_config(
+                    &app,
+                    db,
+                    &next_settings,
+                    Some(next_settings.preferred_port),
+                )
+            })
         }
     })
     .await?;

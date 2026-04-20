@@ -1,7 +1,6 @@
 //! Usage: Provider sort modes related Tauri commands.
 
-use crate::app_state::{ensure_db_ready, DbInitState, GatewayState};
-use crate::shared::mutex_ext::MutexExt;
+use crate::app_state::{ensure_db_ready, with_gateway_manager, DbInitState, GatewayState};
 use crate::{blocking, sort_modes};
 
 #[tauri::command]
@@ -96,10 +95,9 @@ pub(crate) async fn sort_mode_active_set(
     })
     .await?;
 
-    {
-        let manager = gateway_state.0.lock_or_recover();
+    with_gateway_manager(gateway_state.inner(), |manager| {
         manager.clear_cli_session_bindings(&cli_key);
-    }
+    });
 
     Ok(row)
 }

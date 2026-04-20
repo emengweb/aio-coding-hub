@@ -1,10 +1,8 @@
-use crate::app_state::{ensure_db_ready, DbInitState, GatewayState};
+use crate::app_state::{ensure_db_ready, with_app_gateway_manager_mut, DbInitState};
 use crate::gateway::events::GATEWAY_STATUS_EVENT_NAME;
-use crate::shared::mutex_ext::MutexExt;
 use crate::{base_url_probe, blocking, providers};
 use serde_json::json;
 use std::path::{Path, PathBuf};
-use tauri::Manager;
 use tauri_plugin_clipboard_manager::ClipboardExt;
 
 const ENV_CLAUDE_DISABLE_NONESSENTIAL_TRAFFIC: &str = "CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC";
@@ -49,15 +47,13 @@ fn ensure_gateway_base_origin(
     app: &tauri::AppHandle,
     db: &crate::db::Db,
 ) -> crate::shared::error::AppResult<String> {
-    let state = app.state::<GatewayState>();
-    let mut manager = state.0.lock_or_recover();
-
-    let mut status = manager.status();
-    if !status.running {
-        status = manager.start(app, db.clone(), None)?;
-    }
-
-    drop(manager);
+    let status = with_app_gateway_manager_mut(app, |manager| {
+        let mut status = manager.status();
+        if !status.running {
+            status = manager.start(app, db.clone(), None)?;
+        }
+        Ok::<_, crate::shared::error::AppError>(status)
+    })?;
 
     crate::app::heartbeat_watchdog::gated_emit(app, GATEWAY_STATUS_EVENT_NAME, status.clone());
 

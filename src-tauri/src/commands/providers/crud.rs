@@ -1,5 +1,4 @@
-use crate::app_state::{ensure_db_ready, DbInitState, GatewayState};
-use crate::shared::mutex_ext::MutexExt;
+use crate::app_state::{ensure_db_ready, with_gateway_manager, DbInitState, GatewayState};
 use crate::{blocking, providers};
 
 #[derive(serde::Deserialize, specta::Type)]
@@ -230,10 +229,9 @@ pub(crate) async fn provider_upsert(
         }
 
         if decision.clear_session_bindings {
-            let cleared_sessions = {
-                let manager = gateway_state.0.lock_or_recover();
+            let cleared_sessions = with_gateway_manager(gateway_state.inner(), |manager| {
                 manager.clear_cli_session_bindings(&provider.cli_key)
-            };
+            });
             tracing::info!(
                 provider_id = provider.id,
                 cli_key = %provider.cli_key,
@@ -381,10 +379,9 @@ pub(crate) async fn providers_reorder(
 
     if let Ok(ref providers) = result {
         // Provider order changes must invalidate session-bound provider_order (default TTL=300s).
-        let cleared = {
-            let manager = gateway_state.0.lock_or_recover();
+        let cleared = with_gateway_manager(gateway_state.inner(), |manager| {
             manager.clear_cli_session_bindings(&cli_key_for_log)
-        };
+        });
         tracing::info!(
             cli_key = %cli_key_for_log,
             count = providers.len(),
