@@ -984,7 +984,7 @@ pub(crate) async fn settings_codex_session_id_completion_set(
 /// Delegates to the shared `wsl_auto_sync_core` which handles all precondition checks.
 #[cfg(windows)]
 async fn wsl_auto_sync_after_settings(app: &tauri::AppHandle) -> Result<(), String> {
-    super::wsl::wsl_auto_sync_core(app).await
+    crate::commands::wsl::wsl_auto_sync_core(app).await
 }
 
 #[cfg(test)]
