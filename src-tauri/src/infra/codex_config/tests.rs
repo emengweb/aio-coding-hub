@@ -65,7 +65,7 @@ type = "stdio"
 }
 
 #[test]
-fn patch_deletes_sandbox_workspace_write_network_access_and_table_when_false() {
+fn patch_keeps_explicit_false_for_sandbox_workspace_write_network_access() {
     let input = r#"[sandbox_workspace_write]
 network_access = false
 "#;
@@ -80,12 +80,12 @@ network_access = false
     .expect("patch_config_toml");
 
     let s = String::from_utf8(out).expect("utf8");
-    assert!(!s.contains("[sandbox_workspace_write]"), "{s}");
-    assert!(!s.contains("network_access"), "{s}");
+    assert!(s.contains("[sandbox_workspace_write]"), "{s}");
+    assert!(s.contains("network_access = false"), "{s}");
 }
 
 #[test]
-fn patch_deletes_sandbox_workspace_write_network_access_but_preserves_other_keys() {
+fn patch_keeps_explicit_false_for_sandbox_workspace_write_and_preserves_other_keys() {
     let input = r#"[sandbox_workspace_write]
 network_access = true
 other = "keep"
@@ -103,7 +103,7 @@ other = "keep"
     let s = String::from_utf8(out).expect("utf8");
     assert!(s.contains("[sandbox_workspace_write]"), "{s}");
     assert!(s.contains("other = \"keep\""), "{s}");
-    assert!(!s.contains("network_access ="), "{s}");
+    assert!(s.contains("network_access = false"), "{s}");
 }
 
 #[test]
@@ -127,7 +127,7 @@ shell_tool = true
 }
 
 #[test]
-fn patch_deletes_default_false_feature_when_disabled() {
+fn patch_writes_explicit_false_for_feature_when_disabled() {
     let input = r#"[features]
 shell_snapshot = true
 "#;
@@ -142,7 +142,7 @@ shell_snapshot = true
     .expect("patch_config_toml");
 
     let s = String::from_utf8(out).expect("utf8");
-    assert!(!s.contains("shell_snapshot ="), "{s}");
+    assert!(s.contains("shell_snapshot = false"), "{s}");
 }
 
 #[test]
@@ -269,7 +269,7 @@ fast_mode = true
 
     let s = String::from_utf8(out).expect("utf8");
     assert!(!s.contains("service_tier ="), "{s}");
-    assert!(!s.contains("fast_mode ="), "{s}");
+    assert!(s.contains("fast_mode = false"), "{s}");
 }
 
 #[test]
@@ -310,7 +310,7 @@ responses_websockets_v2 = true
 
     let s = String::from_utf8(out).expect("utf8");
     assert!(!s.contains("personality ="), "{s}");
-    assert!(!s.contains("responses_websockets_v2 ="), "{s}");
+    assert!(s.contains("responses_websockets_v2 = false"), "{s}");
 }
 
 #[test]
@@ -335,7 +335,7 @@ remote_compaction = true
 }
 
 #[test]
-fn patch_deletes_feature_when_disabled() {
+fn patch_writes_explicit_false_for_existing_feature_when_disabled() {
     let input = r#"[features]
 shell_tool = true
 "#;
@@ -350,7 +350,7 @@ shell_tool = true
     .expect("patch_config_toml");
 
     let s = String::from_utf8(out).expect("utf8");
-    assert!(!s.contains("shell_tool ="), "{s}");
+    assert!(s.contains("shell_tool = false"), "{s}");
 }
 
 #[test]
@@ -656,7 +656,7 @@ remote_compaction = true
     assert!(s.contains("[model_providers.aio]"), "{s}");
     assert!(s.contains("name = \"aio\""), "{s}");
     assert!(!s.contains("[model_providers.OpenAI]"), "{s}");
-    assert!(!s.contains("remote_compaction ="), "{s}");
+    assert!(s.contains("remote_compaction = false"), "{s}");
 }
 
 #[test]

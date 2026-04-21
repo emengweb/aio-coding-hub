@@ -178,6 +178,13 @@ Config write checklist:
   drift.
 - Add one test that proves a read failure does not silently erase unrelated
   fields on the next save.
+- For app-owned settings files, persist the full managed snapshot. Do not drop
+  keys just because they equal today's default.
+- For third-party config bridges, document whether each field is explicitly
+  managed or intentionally follows upstream defaults.
+- If the target format supports explicit `false`, do not encode "disabled" as
+  key deletion.
+- Add upgrade-drift tests that distinguish explicit `false` from a missing key.
 
 ### Mistake 8: Letting Composition Roots Become Feature Hosts
 
@@ -211,6 +218,27 @@ Runtime-bridge checklist:
 - The root hook should see one query snapshot and one controller call.
 - The controller should own de-duplication and normalization.
 - Runtime singleton setters should not leak into app bootstrap or route code.
+
+### Mistake 7b: Treating Missing Managed Settings as a Stable Meaning
+
+**Bad**: A settings writer omits fields that currently equal defaults, or a CLI
+bridge uses `false => delete key`. A later release changes defaults and the same
+persisted file is reinterpreted as a different user choice.
+
+**Good**: Separate "explicitly managed value" from "follow upstream default" in
+the storage contract. App-owned settings should persist full snapshots.
+Third-party bridges should use deliberate per-field semantics instead of
+reusing key deletion as a generic "off" state.
+
+Upgrade-persistence checklist:
+- For internal settings, missing keys should mean "legacy or corrupted data",
+  not "safe to recompute from the latest defaults".
+- For upstream-managed config files, define whether the product owns each field
+  or intentionally defers to upstream defaults.
+- If product intentionally supports "follow upstream default", model that as an
+  explicit third state in the app contract instead of overloading `false`.
+- Add at least one regression test that simulates a future default change and
+  proves persisted user choices stay stable across upgrades.
 
 ### Mistake 13: Letting Tauri Commands Become Application Services
 

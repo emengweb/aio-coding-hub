@@ -768,7 +768,7 @@ pub(super) fn patch_config_toml(
             &mut lines,
             "sandbox_workspace_write",
             &["network_access"],
-            vec![("network_access", v.then(|| "true".to_string()))],
+            vec![("network_access", Some(v.to_string()))],
         );
     }
 
@@ -786,24 +786,25 @@ pub(super) fn patch_config_toml(
     if has_any_feature_patch {
         let mut items: Vec<(&str, Option<String>)> = Vec::new();
 
-        // UI semantics: `true` => write `key = true`, `false` => delete the key (do not write `false`).
+        // Keep explicit false values in config.toml so future Codex default
+        // changes do not silently reinterpret a previously managed toggle.
         if let Some(v) = patch.features_unified_exec {
-            items.push(("unified_exec", v.then(|| "true".to_string())));
+            items.push(("unified_exec", Some(v.to_string())));
         }
         if let Some(v) = patch.features_shell_snapshot {
-            items.push(("shell_snapshot", v.then(|| "true".to_string())));
+            items.push(("shell_snapshot", Some(v.to_string())));
         }
         if let Some(v) = patch.features_apply_patch_freeform {
-            items.push(("apply_patch_freeform", v.then(|| "true".to_string())));
+            items.push(("apply_patch_freeform", Some(v.to_string())));
         }
         if let Some(v) = patch.features_shell_tool {
-            items.push(("shell_tool", v.then(|| "true".to_string())));
+            items.push(("shell_tool", Some(v.to_string())));
         }
         if let Some(v) = patch.features_exec_policy {
-            items.push(("exec_policy", v.then(|| "true".to_string())));
+            items.push(("exec_policy", Some(v.to_string())));
         }
         if let Some(v) = patch.features_remote_compaction {
-            items.push(("remote_compaction", v.then(|| "true".to_string())));
+            items.push(("remote_compaction", Some(v.to_string())));
 
             // When remote_compaction is enabled, Codex requires the provider to be named
             // "OpenAI" for the Remote Compact feature to work. Rename the entire
@@ -826,13 +827,13 @@ pub(super) fn patch_config_toml(
             }
         }
         if let Some(v) = patch.features_fast_mode {
-            items.push(("fast_mode", v.then(|| "true".to_string())));
+            items.push(("fast_mode", Some(v.to_string())));
         }
         if let Some(v) = patch.features_responses_websockets_v2 {
-            items.push(("responses_websockets_v2", v.then(|| "true".to_string())));
+            items.push(("responses_websockets_v2", Some(v.to_string())));
         }
         if let Some(v) = patch.features_multi_agent {
-            items.push(("multi_agent", v.then(|| "true".to_string())));
+            items.push(("multi_agent", Some(v.to_string())));
         }
 
         upsert_keys_auto_style(&mut lines, "features", &FEATURES_KEY_ORDER, items);

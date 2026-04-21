@@ -47,6 +47,86 @@ export type AppSettingsPatch = Partial<AppSettings> & {
   upstream_proxy_password?: SensitiveStringUpdate;
 };
 
+type AssertNever<TValue extends never> = TValue;
+
+type SettingsViewKeysHandledByCreateInput =
+  | "preferred_port"
+  | "show_home_heatmap"
+  | "show_home_usage"
+  | "home_usage_period"
+  | "gateway_listen_mode"
+  | "gateway_custom_listen_address"
+  | "auto_start"
+  | "start_minimized"
+  | "tray_enabled"
+  | "enable_cli_proxy_startup_recovery"
+  | "log_retention_days"
+  | "provider_cooldown_seconds"
+  | "provider_base_url_ping_cache_ttl_seconds"
+  | "upstream_first_byte_timeout_seconds"
+  | "upstream_stream_idle_timeout_seconds"
+  | "upstream_request_timeout_non_streaming_seconds"
+  | "verbose_provider_error"
+  | "intercept_anthropic_warmup_requests"
+  | "enable_thinking_signature_rectifier"
+  | "enable_thinking_budget_rectifier"
+  | "enable_billing_header_rectifier"
+  | "enable_claude_metadata_user_id_injection"
+  | "enable_cache_anomaly_monitor"
+  | "enable_task_complete_notify"
+  | "enable_notification_sound"
+  | "enable_response_fixer"
+  | "response_fixer_fix_encoding"
+  | "response_fixer_fix_sse_format"
+  | "response_fixer_fix_truncated_json"
+  | "update_releases_url"
+  | "failover_max_attempts_per_provider"
+  | "failover_max_providers_to_try"
+  | "circuit_breaker_failure_threshold"
+  | "circuit_breaker_open_duration_minutes"
+  | "wsl_auto_config"
+  | "wsl_target_cli"
+  | "cli_priority_order"
+  | "wsl_host_address_mode"
+  | "wsl_custom_host_address"
+  | "codex_home_mode"
+  | "codex_home_override"
+  | "cx2cc_fallback_model_opus"
+  | "cx2cc_fallback_model_sonnet"
+  | "cx2cc_fallback_model_haiku"
+  | "cx2cc_fallback_model_main"
+  | "cx2cc_model_reasoning_effort"
+  | "cx2cc_service_tier"
+  | "cx2cc_disable_response_storage"
+  | "cx2cc_enable_reasoning_to_thinking"
+  | "cx2cc_drop_stop_sequences"
+  | "cx2cc_clean_schema"
+  | "cx2cc_filter_batch_tool"
+  | "upstream_proxy_enabled"
+  | "upstream_proxy_url"
+  | "upstream_proxy_username";
+
+type SettingsViewKeysHandledOutsideCreateInput =
+  | "schema_version"
+  | "enable_circuit_breaker_notice"
+  | "enable_codex_session_id_completion"
+  | "response_fixer_max_json_depth"
+  | "response_fixer_max_fix_size"
+  | "upstream_proxy_password_configured";
+
+export type __AssertNoUnhandledSettingsViewKeys = AssertNever<
+  Exclude<
+    keyof GeneratedAppSettings,
+    SettingsViewKeysHandledByCreateInput | SettingsViewKeysHandledOutsideCreateInput
+  >
+>;
+export type __AssertNoStaleHandledSettingsViewKeys = AssertNever<
+  Exclude<
+    SettingsViewKeysHandledByCreateInput | SettingsViewKeysHandledOutsideCreateInput,
+    keyof GeneratedAppSettings
+  >
+>;
+
 function toGeneratedSettingsUpdate(input: SettingsSetInput): GeneratedSettingsUpdate {
   const update: GeneratedSettingsUpdate = {
     preferredPort: input.preferredPort,

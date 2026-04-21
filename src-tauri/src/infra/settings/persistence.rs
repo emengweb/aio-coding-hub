@@ -63,45 +63,23 @@ pub(super) fn parse_settings_json(
 }
 
 pub(super) fn canonical_settings_json(settings: &AppSettings) -> AppResult<serde_json::Value> {
-    let serialized =
+    let mut serialized =
         serde_json::to_value(settings).map_err(|e| format!("failed to serialize settings: {e}"))?;
-    let serialized_defaults = serde_json::to_value(AppSettings::default())
-        .map_err(|e| format!("failed to serialize default settings: {e}"))?;
 
-    let serialized_obj = serialized.as_object().ok_or_else(|| {
+    let serialized_obj = serialized.as_object_mut().ok_or_else(|| {
         "failed to serialize settings: expected settings to serialize as an object".to_string()
     })?;
-    let defaults_obj = serialized_defaults.as_object().ok_or_else(|| {
-        "failed to serialize default settings: expected defaults to serialize as an object"
-            .to_string()
-    })?;
 
-    let mut compact = serde_json::Map::new();
-    // Always include schema_version to prevent migration heuristics from treating this as a legacy file.
-    if let Some(schema_version) = serialized_obj.get("schema_version") {
-        compact.insert("schema_version".to_string(), schema_version.clone());
-    } else {
-        compact.insert(
+    // Keep the full managed snapshot on disk so future default changes do not
+    // reinterpret omitted keys as a new user choice after an upgrade.
+    if !serialized_obj.contains_key("schema_version") {
+        serialized_obj.insert(
             "schema_version".to_string(),
             serde_json::json!(SCHEMA_VERSION),
         );
     }
 
-    for (key, value) in serialized_obj {
-        if key == "schema_version" {
-            continue;
-        }
-
-        if let Some(default_value) = defaults_obj.get(key) {
-            if value == default_value {
-                continue;
-            }
-        }
-
-        compact.insert(key.clone(), value.clone());
-    }
-
-    Ok(serde_json::Value::Object(compact))
+    Ok(serialized)
 }
 
 pub fn read<R: tauri::Runtime>(app: &tauri::AppHandle<R>) -> AppResult<AppSettings> {
@@ -424,13 +402,12 @@ mod tests {
     }
 
     #[test]
-    fn canonical_settings_json_drops_default_fields() {
+    fn canonical_settings_json_keeps_default_fields() {
         let canonical = canonical_settings_json(&AppSettings::default()).unwrap();
+        let serialized_defaults = serde_json::to_value(AppSettings::default()).unwrap();
         assert_eq!(
             canonical,
-            serde_json::json!({
-                "schema_version": SCHEMA_VERSION
-            })
+            serialized_defaults
         );
     }
 
@@ -441,20 +418,14 @@ mod tests {
             ..Default::default()
         };
         let canonical = canonical_settings_json(&settings).unwrap();
-        assert_eq!(
-            canonical,
-            serde_json::json!({
-                "schema_version": SCHEMA_VERSION,
-                "auto_start": true
-            })
-        );
+        let expected = serde_json::to_value(settings).unwrap();
+        assert_eq!(canonical, expected);
     }
 
     #[test]
-    fn canonical_settings_json_detects_extra_default_fields() {
+    fn canonical_settings_json_detects_truncated_snapshots() {
         let raw = serde_json::json!({
-            "schema_version": SCHEMA_VERSION,
-            "preferred_port": DEFAULT_GATEWAY_PORT
+            "schema_version": SCHEMA_VERSION
         });
         let settings = AppSettings::default();
         let canonical = canonical_settings_json(&settings).unwrap();
