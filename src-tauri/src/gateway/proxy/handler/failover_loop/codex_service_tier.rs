@@ -70,7 +70,7 @@ fn resolve_priority(
                 (None, false)
             }
         }
-        "actual" | _ => {
+        _ => {
             if let Some(actual_tier) = actual {
                 (Some("actual"), actual_tier == "priority")
             } else if let Some(requested_tier) = requested {
