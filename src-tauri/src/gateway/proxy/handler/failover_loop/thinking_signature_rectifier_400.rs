@@ -107,7 +107,7 @@ pub(super) async fn handle_thinking_rectifiers_400(
                     client_attempts,
                 );
                 emit_request_event_and_enqueue_request_log(
-                    RequestEndArgs {
+                    RequestEndArgs::from_context(RequestEndContextArgs {
                         deps: RequestEndDeps::new(&state.app, &state.db, &state.log_tx),
                         trace_id: trace_id.as_str(),
                         cli_key: cli_key.as_str(),
@@ -116,22 +116,14 @@ pub(super) async fn handle_thinking_rectifiers_400(
                         observe: ctx.observe,
                         query: query.as_deref(),
                         excluded_from_stats: false,
-                        status: None,
-                        error_category: None,
-                        error_code: None,
                         duration_ms,
-                        event_ttfb_ms: None,
-                        log_ttfb_ms: None,
                         attempts: attempts.as_slice(),
                         special_settings_json: None,
                         session_id,
                         requested_model,
                         created_at_ms,
                         created_at,
-                        usage_metrics: None,
-                        log_usage_metrics: None,
-                        usage: None,
-                    }
+                    })
                     .with_completion(RequestCompletion::failure(
                         StatusCode::BAD_GATEWAY.as_u16(),
                         Some(ErrorCategory::SystemError.as_str()),
@@ -460,7 +452,7 @@ pub(super) async fn handle_thinking_rectifiers_400(
                 let duration_ms = started.elapsed().as_millis();
 
                 emit_request_event_and_enqueue_request_log(
-                    RequestEndArgs {
+                    RequestEndArgs::from_context(RequestEndContextArgs {
                         deps: RequestEndDeps::new(&state.app, &state.db, &state.log_tx),
                         trace_id: trace_id.as_str(),
                         cli_key: cli_key.as_str(),
@@ -469,22 +461,14 @@ pub(super) async fn handle_thinking_rectifiers_400(
                         observe: ctx.observe,
                         query: query.as_deref(),
                         excluded_from_stats: false,
-                        status: None,
-                        error_category: None,
-                        error_code: None,
                         duration_ms,
-                        event_ttfb_ms: None,
-                        log_ttfb_ms: None,
                         attempts: attempts.as_slice(),
                         special_settings_json,
                         session_id,
                         requested_model,
                         created_at_ms,
                         created_at,
-                        usage_metrics: None,
-                        log_usage_metrics: None,
-                        usage: None,
-                    }
+                    })
                     .with_completion(RequestCompletion::failure_with_ttfb(
                         status.as_u16(),
                         Some(category.as_str()),

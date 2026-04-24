@@ -14,19 +14,47 @@ pub(super) struct StreamRequestCompletion {
 }
 
 impl StreamRequestCompletion {
-    pub(super) fn new(
-        error_code: Option<&'static str>,
+    pub(super) fn success(
         ttfb_ms: Option<u128>,
         requested_model: Option<String>,
         usage_metrics: Option<crate::usage::UsageMetrics>,
         usage: Option<crate::usage::UsageExtract>,
     ) -> Self {
         Self {
-            error_code,
+            error_code: None,
             ttfb_ms,
             requested_model,
             usage_metrics,
             usage,
+        }
+    }
+
+    pub(super) fn failure(
+        error_code: &'static str,
+        ttfb_ms: Option<u128>,
+        requested_model: Option<String>,
+        usage_metrics: Option<crate::usage::UsageMetrics>,
+        usage: Option<crate::usage::UsageExtract>,
+    ) -> Self {
+        Self {
+            error_code: Some(error_code),
+            ttfb_ms,
+            requested_model,
+            usage_metrics,
+            usage,
+        }
+    }
+
+    pub(super) fn from_error_code(
+        error_code: Option<&'static str>,
+        ttfb_ms: Option<u128>,
+        requested_model: Option<String>,
+        usage_metrics: Option<crate::usage::UsageMetrics>,
+        usage: Option<crate::usage::UsageExtract>,
+    ) -> Self {
+        match error_code {
+            Some(code) => Self::failure(code, ttfb_ms, requested_model, usage_metrics, usage),
+            None => Self::success(ttfb_ms, requested_model, usage_metrics, usage),
         }
     }
 }
@@ -109,10 +137,20 @@ mod tests {
     use crate::gateway::proxy::GatewayErrorCode;
 
     #[test]
+    fn stream_request_completion_builds_success_without_error_code() {
+        let completion =
+            StreamRequestCompletion::success(Some(8), Some("gpt-5".to_string()), None, None);
+
+        assert!(completion.error_code.is_none());
+        assert_eq!(completion.ttfb_ms, Some(8));
+        assert_eq!(completion.requested_model.as_deref(), Some("gpt-5"));
+    }
+
+    #[test]
     fn stream_request_completion_keeps_terminal_fields_together() {
         let usage_metrics = crate::usage::UsageMetrics::default();
-        let completion = StreamRequestCompletion::new(
-            Some(GatewayErrorCode::StreamError.as_str()),
+        let completion = StreamRequestCompletion::failure(
+            GatewayErrorCode::StreamError.as_str(),
             Some(12),
             Some("gpt-5".to_string()),
             Some(usage_metrics),

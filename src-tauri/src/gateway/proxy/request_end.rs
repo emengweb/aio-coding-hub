@@ -97,7 +97,7 @@ impl RequestCompletion {
     }
 }
 
-pub(super) struct RequestEndArgs<'a> {
+pub(super) struct RequestEndContextArgs<'a> {
     pub(super) deps: RequestEndDeps<'a>,
     pub(super) trace_id: &'a str,
     pub(super) cli_key: &'a str,
@@ -106,24 +106,70 @@ pub(super) struct RequestEndArgs<'a> {
     pub(super) observe: bool,
     pub(super) query: Option<&'a str>,
     pub(super) excluded_from_stats: bool,
-    pub(super) status: Option<u16>,
-    pub(super) error_category: Option<&'static str>,
-    pub(super) error_code: Option<&'static str>,
     pub(super) duration_ms: u128,
-    pub(super) event_ttfb_ms: Option<u128>,
-    pub(super) log_ttfb_ms: Option<u128>,
     pub(super) attempts: &'a [FailoverAttempt],
     pub(super) special_settings_json: Option<String>,
     pub(super) session_id: Option<String>,
     pub(super) requested_model: Option<String>,
     pub(super) created_at_ms: i64,
     pub(super) created_at: i64,
-    pub(super) usage_metrics: Option<crate::usage::UsageMetrics>,
-    pub(super) log_usage_metrics: Option<crate::usage::UsageMetrics>,
-    pub(super) usage: Option<crate::usage::UsageExtract>,
+}
+
+pub(super) struct RequestEndArgs<'a> {
+    deps: RequestEndDeps<'a>,
+    trace_id: &'a str,
+    cli_key: &'a str,
+    method: &'a str,
+    path: &'a str,
+    observe: bool,
+    query: Option<&'a str>,
+    excluded_from_stats: bool,
+    status: Option<u16>,
+    error_category: Option<&'static str>,
+    error_code: Option<&'static str>,
+    duration_ms: u128,
+    event_ttfb_ms: Option<u128>,
+    log_ttfb_ms: Option<u128>,
+    attempts: &'a [FailoverAttempt],
+    special_settings_json: Option<String>,
+    session_id: Option<String>,
+    requested_model: Option<String>,
+    created_at_ms: i64,
+    created_at: i64,
+    usage_metrics: Option<crate::usage::UsageMetrics>,
+    log_usage_metrics: Option<crate::usage::UsageMetrics>,
+    usage: Option<crate::usage::UsageExtract>,
 }
 
 impl<'a> RequestEndArgs<'a> {
+    pub(super) fn from_context(context: RequestEndContextArgs<'a>) -> Self {
+        Self {
+            deps: context.deps,
+            trace_id: context.trace_id,
+            cli_key: context.cli_key,
+            method: context.method,
+            path: context.path,
+            observe: context.observe,
+            query: context.query,
+            excluded_from_stats: context.excluded_from_stats,
+            status: None,
+            error_category: None,
+            error_code: None,
+            duration_ms: context.duration_ms,
+            event_ttfb_ms: None,
+            log_ttfb_ms: None,
+            attempts: context.attempts,
+            special_settings_json: context.special_settings_json,
+            session_id: context.session_id,
+            requested_model: context.requested_model,
+            created_at_ms: context.created_at_ms,
+            created_at: context.created_at,
+            usage_metrics: None,
+            log_usage_metrics: None,
+            usage: None,
+        }
+    }
+
     pub(super) fn with_completion(mut self, completion: RequestCompletion) -> Self {
         self.status = completion.status;
         self.error_category = completion.error_category;

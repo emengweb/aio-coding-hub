@@ -144,7 +144,7 @@ where
 
         emit_request_event_and_spawn_request_log(
             &self.ctx,
-            StreamRequestCompletion::new(
+            StreamRequestCompletion::from_error_code(
                 error_code,
                 self.first_byte_ms,
                 requested_model,
@@ -505,7 +505,7 @@ where
 
         emit_request_event_and_spawn_request_log(
             &self.ctx,
-            StreamRequestCompletion::new(
+            StreamRequestCompletion::from_error_code(
                 error_code,
                 self.first_byte_ms,
                 requested_model,

@@ -7,7 +7,7 @@ use super::SpecialSettings;
 use crate::gateway::proxy::errors::error_response;
 use crate::gateway::proxy::request_end::{
     emit_request_event_and_enqueue_request_log, emit_request_event_and_spawn_request_log,
-    RequestCompletion, RequestEndArgs, RequestEndDeps,
+    RequestCompletion, RequestEndArgs, RequestEndContextArgs, RequestEndDeps,
 };
 use crate::gateway::proxy::{ErrorCategory, GatewayErrorCode};
 use crate::gateway::runtime::GatewayAppState;
@@ -177,7 +177,7 @@ fn early_error_request_end_args<'a>(
     session_id: Option<String>,
     requested_model: Option<String>,
 ) -> RequestEndArgs<'a> {
-    RequestEndArgs {
+    RequestEndArgs::from_context(RequestEndContextArgs {
         deps: RequestEndDeps::new(&ctx.state.app, &ctx.state.db, &ctx.state.log_tx),
         trace_id: ctx.trace_id,
         cli_key: ctx.cli_key,
@@ -186,22 +186,14 @@ fn early_error_request_end_args<'a>(
         observe: ctx.observe,
         query: ctx.query,
         excluded_from_stats: contract.excluded_from_stats,
-        status: None,
-        error_category: None,
-        error_code: None,
         duration_ms: ctx.duration_ms,
-        event_ttfb_ms: None,
-        log_ttfb_ms: None,
         attempts: &[],
         special_settings_json,
         session_id,
         requested_model,
         created_at_ms: ctx.created_at_ms,
         created_at: ctx.created_at,
-        usage_metrics: None,
-        log_usage_metrics: None,
-        usage: None,
-    }
+    })
     .with_completion(RequestCompletion::failure(
         contract.status.as_u16(),
         contract.error_category,

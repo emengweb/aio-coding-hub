@@ -12,7 +12,7 @@ use super::thinking_signature_rectifier_400;
 use super::{emit_attempt_event_and_log, AttemptCircuitFields};
 use super::{
     emit_gateway_log, emit_request_event_and_enqueue_request_log, RequestCompletion,
-    RequestEndArgs, RequestEndDeps,
+    RequestEndArgs, RequestEndContextArgs, RequestEndDeps,
 };
 use crate::circuit_breaker;
 use crate::gateway::events::decision_chain as dc;
@@ -491,7 +491,7 @@ pub(super) async fn handle_non_success_response(
                 let duration_ms = started.elapsed().as_millis();
 
                 emit_request_event_and_enqueue_request_log(
-                    RequestEndArgs {
+                    RequestEndArgs::from_context(RequestEndContextArgs {
                         deps: RequestEndDeps::new(&state.app, &state.db, &state.log_tx),
                         trace_id: trace_id.as_str(),
                         cli_key: cli_key.as_str(),
@@ -500,22 +500,14 @@ pub(super) async fn handle_non_success_response(
                         observe: ctx.observe,
                         query: query.as_deref(),
                         excluded_from_stats: false,
-                        status: None,
-                        error_category: None,
-                        error_code: None,
                         duration_ms,
-                        event_ttfb_ms: None,
-                        log_ttfb_ms: None,
                         attempts: attempts.as_slice(),
                         special_settings_json,
                         session_id,
                         requested_model,
                         created_at_ms,
                         created_at,
-                        usage_metrics: None,
-                        log_usage_metrics: None,
-                        usage: None,
-                    }
+                    })
                     .with_completion(RequestCompletion::failure_with_ttfb(
                         status.as_u16(),
                         Some(category.as_str()),
@@ -539,7 +531,7 @@ pub(super) async fn handle_non_success_response(
             let duration_ms = started.elapsed().as_millis();
 
             emit_request_event_and_enqueue_request_log(
-                RequestEndArgs {
+                RequestEndArgs::from_context(RequestEndContextArgs {
                     deps: RequestEndDeps::new(&state.app, &state.db, &state.log_tx),
                     trace_id: trace_id.as_str(),
                     cli_key: cli_key.as_str(),
@@ -548,22 +540,14 @@ pub(super) async fn handle_non_success_response(
                     observe: ctx.observe,
                     query: query.as_deref(),
                     excluded_from_stats: false,
-                    status: None,
-                    error_category: None,
-                    error_code: None,
                     duration_ms,
-                    event_ttfb_ms: None,
-                    log_ttfb_ms: None,
                     attempts: attempts.as_slice(),
                     special_settings_json,
                     session_id,
                     requested_model,
                     created_at_ms,
                     created_at,
-                    usage_metrics: None,
-                    log_usage_metrics: None,
-                    usage: None,
-                }
+                })
                 .with_completion(RequestCompletion::failure_with_ttfb(
                     status.as_u16(),
                     Some(category.as_str()),

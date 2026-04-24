@@ -894,7 +894,7 @@ pub(super) async fn handle_success_non_stream(
 
     let duration_ms = started.elapsed().as_millis();
     emit_request_event_and_enqueue_request_log(
-        RequestEndArgs {
+        RequestEndArgs::from_context(RequestEndContextArgs {
             deps: RequestEndDeps::new(&state.app, &state.db, &state.log_tx),
             trace_id: common.trace_id.as_str(),
             cli_key: common.cli_key.as_str(),
@@ -903,22 +903,14 @@ pub(super) async fn handle_success_non_stream(
             observe: common.observe,
             query: common.query.as_deref(),
             excluded_from_stats: false,
-            status: None,
-            error_category: None,
-            error_code: None,
             duration_ms,
-            event_ttfb_ms: None,
-            log_ttfb_ms: None,
             attempts: attempts.as_slice(),
             special_settings_json: response_fixer::special_settings_json(&common.special_settings),
             session_id: common.session_id.clone(),
             requested_model: requested_model_for_log,
             created_at_ms,
             created_at,
-            usage_metrics: None,
-            log_usage_metrics: None,
-            usage: None,
-        }
+        })
         .with_completion(RequestCompletion::success(
             status.as_u16(),
             Some(duration_ms),

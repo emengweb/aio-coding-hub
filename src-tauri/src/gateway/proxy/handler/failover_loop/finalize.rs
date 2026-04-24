@@ -1,7 +1,10 @@
 //! Usage: Finalize responses for failover loop terminal states.
 
 use super::context::AttemptOutcome;
-use super::{emit_request_event_and_enqueue_request_log, RequestEndArgs, RequestEndDeps};
+use super::{
+    emit_request_event_and_enqueue_request_log, RequestEndArgs, RequestEndContextArgs,
+    RequestEndDeps,
+};
 use crate::gateway::events::FailoverAttempt;
 use crate::gateway::proxy::abort_guard::RequestAbortGuard;
 use crate::gateway::proxy::caches::CachedGatewayError;
@@ -113,7 +116,7 @@ pub(super) async fn all_providers_unavailable(input: AllUnavailableInput<'_>) ->
 
     let duration_ms = started.elapsed().as_millis();
     emit_request_event_and_enqueue_request_log(
-        RequestEndArgs {
+        RequestEndArgs::from_context(RequestEndContextArgs {
             deps: RequestEndDeps::new(&state.app, &state.db, &state.log_tx),
             trace_id: trace_id.as_str(),
             cli_key: cli_key.as_str(),
@@ -122,22 +125,14 @@ pub(super) async fn all_providers_unavailable(input: AllUnavailableInput<'_>) ->
             observe,
             query: query.as_deref(),
             excluded_from_stats: false,
-            status: None,
-            error_category: None,
-            error_code: None,
             duration_ms,
-            event_ttfb_ms: None,
-            log_ttfb_ms: None,
             attempts: attempts.as_slice(),
             special_settings_json: response_fixer::special_settings_json(&special_settings),
             session_id,
             requested_model,
             created_at_ms,
             created_at,
-            usage_metrics: None,
-            log_usage_metrics: None,
-            usage: None,
-        }
+        })
         .with_completion(RequestCompletion::failure(
             StatusCode::SERVICE_UNAVAILABLE.as_u16(),
             None,
@@ -250,7 +245,7 @@ pub(super) async fn all_providers_failed(input: AllFailedInput<'_>) -> Response 
 
     let duration_ms = started.elapsed().as_millis();
     emit_request_event_and_enqueue_request_log(
-        RequestEndArgs {
+        RequestEndArgs::from_context(RequestEndContextArgs {
             deps: RequestEndDeps::new(&state.app, &state.db, &state.log_tx),
             trace_id: trace_id.as_str(),
             cli_key: cli_key.as_str(),
@@ -259,22 +254,14 @@ pub(super) async fn all_providers_failed(input: AllFailedInput<'_>) -> Response 
             observe,
             query: query.as_deref(),
             excluded_from_stats: false,
-            status: None,
-            error_category: None,
-            error_code: None,
             duration_ms,
-            event_ttfb_ms: None,
-            log_ttfb_ms: None,
             attempts: attempts.as_slice(),
             special_settings_json: response_fixer::special_settings_json(&special_settings),
             session_id,
             requested_model,
             created_at_ms,
             created_at,
-            usage_metrics: None,
-            log_usage_metrics: None,
-            usage: None,
-        }
+        })
         .with_completion(RequestCompletion::failure(
             StatusCode::BAD_GATEWAY.as_u16(),
             final_error_category,

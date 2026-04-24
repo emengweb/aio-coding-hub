@@ -53,7 +53,8 @@ use oauth::{
     resolve_oauth_adapter_for_provider,
 };
 use request_end_helpers::{
-    emit_request_event_and_enqueue_request_log, RequestCompletion, RequestEndArgs, RequestEndDeps,
+    emit_request_event_and_enqueue_request_log, RequestCompletion, RequestEndArgs,
+    RequestEndContextArgs, RequestEndDeps,
 };
 
 use crate::gateway::proxy::{
