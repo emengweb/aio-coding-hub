@@ -4,7 +4,7 @@ import { gatewayEventNames } from "../constants/gatewayEvents";
 import { gatewayKeys, providerLimitUsageKeys, usageKeys } from "../query/keys";
 import { logToConsole } from "../services/consoleLog";
 import { subscribeGatewayEvent } from "../services/gateway/gatewayEventBus";
-import type { GatewayRequestSignalEvent } from "../services/gateway/gatewayEvents";
+import { isGatewayRequestSignalEvent } from "../services/gateway/gatewayEvents";
 import { isRequestSignalComplete } from "../services/gateway/requestLogState";
 
 const CIRCUIT_INVALIDATE_THROTTLE_MS = 500;
@@ -69,16 +69,13 @@ export function useGatewayQuerySync() {
       if (cancelled) return;
       scheduleInvalidateStatus();
     });
-    const requestSignalSub = subscribeGatewayEvent<GatewayRequestSignalEvent>(
-      gatewayEventNames.requestSignal,
-      (payload) => {
-        if (!payload || !isRequestSignalComplete(payload)) {
-          return;
-        }
-        if (cancelled) return;
-        scheduleInvalidateUsageDerived();
+    const requestSignalSub = subscribeGatewayEvent(gatewayEventNames.requestSignal, (payload) => {
+      if (!isGatewayRequestSignalEvent(payload) || !isRequestSignalComplete(payload)) {
+        return;
       }
-    );
+      if (cancelled) return;
+      scheduleInvalidateUsageDerived();
+    });
 
     void Promise.allSettled([circuitSub.ready, statusSub.ready, requestSignalSub.ready]).then(
       (results) => {

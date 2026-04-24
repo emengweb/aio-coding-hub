@@ -6,6 +6,7 @@ import { useProviderLimitUsageV1Query } from "../../../../query/providerLimitUsa
 import { useUsageHourlySeriesQuery } from "../../../../query/usage";
 import { emitBackgroundTaskVisibilityTrigger } from "../../../../services/backgroundTasks";
 import { useRequestLogsFeed } from "../../../../hooks/useRequestLogsFeed";
+import { useHomeFreshnessOwner } from "../useHomeFreshnessOwner";
 import { useHomeOverviewFeed } from "../useHomeOverviewFeed";
 
 vi.mock("../../../../hooks/useWindowForeground", () => ({
@@ -14,6 +15,10 @@ vi.mock("../../../../hooks/useWindowForeground", () => ({
 
 vi.mock("../../../../hooks/useRequestLogsFeed", () => ({
   useRequestLogsFeed: vi.fn(),
+}));
+
+vi.mock("../useHomeFreshnessOwner", () => ({
+  useHomeFreshnessOwner: vi.fn(),
 }));
 
 vi.mock("../../../../query/providerLimitUsage", () => ({
@@ -49,6 +54,9 @@ describe("pages/home/hooks/useHomeOverviewFeed", () => {
       requestLogsAvailable: true,
       refreshRequestLogs: vi.fn().mockResolvedValue({ error: null }),
     } as any);
+    vi.mocked(useHomeFreshnessOwner).mockReturnValue({
+      refreshRequestLogsNow: vi.fn(),
+    });
   });
 
   it("uses overview activation only for visibility trigger, not a second manual refetch path", () => {
@@ -107,7 +115,7 @@ describe("pages/home/hooks/useHomeOverviewFeed", () => {
     expect(requestLogsRefresh).not.toHaveBeenCalled();
   });
 
-  it("uses foreground callback only for overview catch-up and leaves request logs freshness to its own owner", () => {
+  it("uses foreground callback only for overview catch-up and leaves request logs freshness to the owner", () => {
     const usageRefetch = vi.fn().mockResolvedValue({ error: null });
     const providerRefetch = vi.fn().mockResolvedValue({ error: null });
     const requestLogsRefresh = vi.fn().mockResolvedValue({ error: null });
@@ -155,6 +163,38 @@ describe("pages/home/hooks/useHomeOverviewFeed", () => {
     );
     expect(usageRefetch).toHaveBeenCalledTimes(1);
     expect(providerRefetch).toHaveBeenCalledTimes(1);
+    expect(requestLogsRefresh).not.toHaveBeenCalled();
+  });
+
+  it("delegates manual request logs refresh to home freshness owner", () => {
+    const ownerRefresh = vi.fn();
+    const requestLogsRefresh = vi.fn().mockResolvedValue({ error: null });
+
+    vi.mocked(useRequestLogsFeed).mockReturnValue({
+      requestLogs: [],
+      requestLogsLoading: false,
+      requestLogsRefreshing: false,
+      requestLogsAvailable: true,
+      refreshRequestLogs: requestLogsRefresh,
+    } as any);
+    vi.mocked(useHomeFreshnessOwner).mockReturnValue({
+      refreshRequestLogsNow: ownerRefresh,
+    });
+
+    const { result } = renderHook(() =>
+      useHomeOverviewFeed({
+        overviewActive: true,
+        foregroundActive: true,
+        showOverviewUsageSection: true,
+        homeUsageWindowDays: 7,
+      })
+    );
+
+    act(() => {
+      result.current.refreshRequestLogs();
+    });
+
+    expect(ownerRefresh).toHaveBeenCalledTimes(1);
     expect(requestLogsRefresh).not.toHaveBeenCalled();
   });
 });

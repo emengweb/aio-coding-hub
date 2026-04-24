@@ -81,7 +81,7 @@ export type GatewayAttemptEvent = {
 };
 
 export type GatewayLogEvent = {
-  level: "debug" | "info" | "warn" | "error";
+  level: string;
   error_code: string;
   message: string;
   requested_port: number;
@@ -163,119 +163,300 @@ function computeOutputTokensPerSecond(payload: GatewayRequestEvent) {
   );
 }
 
+type GatewayEventGuard<TPayload> = (payload: unknown) => payload is TPayload;
+
+function isRecord(payload: unknown): payload is Record<string, unknown> {
+  return typeof payload === "object" && payload !== null && !Array.isArray(payload);
+}
+
+function isString(value: unknown): value is string {
+  return typeof value === "string";
+}
+
+function isNumber(value: unknown): value is number {
+  return typeof value === "number" && Number.isFinite(value);
+}
+
+function isBoolean(value: unknown): value is boolean {
+  return typeof value === "boolean";
+}
+
+function isNullish(value: unknown): value is null | undefined {
+  return value == null;
+}
+
+function isNullableString(value: unknown): value is string | null | undefined {
+  return isNullish(value) || isString(value);
+}
+
+function isNullableNumber(value: unknown): value is number | null | undefined {
+  return isNullish(value) || isNumber(value);
+}
+
+function isNullableBoolean(value: unknown): value is boolean | null | undefined {
+  return isNullish(value) || isBoolean(value);
+}
+
+function isGatewayAttempt(payload: unknown): payload is GatewayAttempt {
+  if (!isRecord(payload)) return false;
+  return (
+    isNumber(payload.provider_id) &&
+    isString(payload.provider_name) &&
+    isString(payload.base_url) &&
+    isString(payload.outcome) &&
+    isNullableNumber(payload.status)
+  );
+}
+
+export function isGatewayRequestStartEvent(payload: unknown): payload is GatewayRequestStartEvent {
+  if (!isRecord(payload)) return false;
+  return (
+    isString(payload.trace_id) &&
+    isString(payload.cli_key) &&
+    isNullableString(payload.session_id) &&
+    isString(payload.method) &&
+    isString(payload.path) &&
+    isNullableString(payload.query) &&
+    isNullableString(payload.requested_model) &&
+    isNumber(payload.ts)
+  );
+}
+
+export function isGatewayRequestSignalEvent(
+  payload: unknown
+): payload is GatewayRequestSignalEvent {
+  if (!isRecord(payload)) return false;
+  return (
+    isString(payload.trace_id) &&
+    isString(payload.cli_key) &&
+    isNullableString(payload.session_id) &&
+    isNullableString(payload.requested_model) &&
+    (payload.phase === "start" || payload.phase === "complete") &&
+    isNumber(payload.ts)
+  );
+}
+
+function isGatewayAttemptEvent(payload: unknown): payload is GatewayAttemptEvent {
+  if (!isRecord(payload)) return false;
+  return (
+    isString(payload.trace_id) &&
+    isString(payload.cli_key) &&
+    isNullableString(payload.session_id) &&
+    isString(payload.method) &&
+    isString(payload.path) &&
+    isNullableString(payload.query) &&
+    isNullableString(payload.requested_model) &&
+    isNumber(payload.attempt_index) &&
+    isNumber(payload.provider_id) &&
+    isNullableBoolean(payload.session_reuse) &&
+    isString(payload.provider_name) &&
+    isString(payload.base_url) &&
+    isString(payload.outcome) &&
+    isNullableNumber(payload.status) &&
+    isNumber(payload.attempt_started_ms) &&
+    isNumber(payload.attempt_duration_ms) &&
+    isNullableString(payload.circuit_state_before) &&
+    isNullableString(payload.circuit_state_after) &&
+    isNullableNumber(payload.circuit_failure_count) &&
+    isNullableNumber(payload.circuit_failure_threshold)
+  );
+}
+
+function isGatewayRequestEvent(payload: unknown): payload is GatewayRequestEvent {
+  if (!isRecord(payload)) return false;
+  const attempts = payload.attempts;
+  return (
+    isString(payload.trace_id) &&
+    isString(payload.cli_key) &&
+    isNullableString(payload.session_id) &&
+    isString(payload.method) &&
+    isString(payload.path) &&
+    isNullableString(payload.query) &&
+    isNullableString(payload.requested_model) &&
+    isNullableNumber(payload.status) &&
+    isNullableString(payload.error_category) &&
+    isNullableString(payload.error_code) &&
+    isNumber(payload.duration_ms) &&
+    isNullableNumber(payload.ttfb_ms) &&
+    Array.isArray(attempts) &&
+    attempts.every(isGatewayAttempt) &&
+    isNullableNumber(payload.input_tokens) &&
+    isNullableNumber(payload.output_tokens) &&
+    isNullableNumber(payload.total_tokens) &&
+    isNullableNumber(payload.cache_read_input_tokens) &&
+    isNullableNumber(payload.cache_creation_input_tokens) &&
+    isNullableNumber(payload.cache_creation_5m_input_tokens) &&
+    isNullableNumber(payload.cache_creation_1h_input_tokens)
+  );
+}
+
+function isGatewayLogEvent(payload: unknown): payload is GatewayLogEvent {
+  if (!isRecord(payload)) return false;
+  return (
+    isString(payload.level) &&
+    isString(payload.error_code) &&
+    isString(payload.message) &&
+    isNumber(payload.requested_port) &&
+    isNumber(payload.bound_port) &&
+    isString(payload.base_url)
+  );
+}
+
+function isGatewayCircuitEvent(payload: unknown): payload is GatewayCircuitEvent {
+  if (!isRecord(payload)) return false;
+  return (
+    isString(payload.trace_id) &&
+    isString(payload.cli_key) &&
+    isNumber(payload.provider_id) &&
+    isString(payload.provider_name) &&
+    isString(payload.base_url) &&
+    isString(payload.prev_state) &&
+    isString(payload.next_state) &&
+    isNumber(payload.failure_count) &&
+    isNumber(payload.failure_threshold) &&
+    isNullableNumber(payload.open_until) &&
+    isNullableNumber(payload.cooldown_until) &&
+    isString(payload.reason) &&
+    isNumber(payload.ts)
+  );
+}
+
+function readGatewayPayload<TPayload>(
+  event: string,
+  payload: unknown,
+  guard: GatewayEventGuard<TPayload>
+): TPayload | null {
+  if (guard(payload)) return payload;
+
+  logToConsole(
+    "warn",
+    "网关事件 payload 无效，已丢弃",
+    { event, payload_type: typeof payload },
+    "gateway:event_guard"
+  );
+  return null;
+}
+
 export async function listenGatewayEvents(): Promise<() => void> {
   const circuitNonTransitionDedup = new Map<string, number>();
   const CIRCUIT_NON_TRANSITION_DEDUP_WINDOW_MS = 3000;
 
-  const requestStartSub = subscribeGatewayEvent<GatewayRequestStartEvent>(
-    gatewayEventNames.requestStart,
-    (payload) => {
-      if (!payload) return;
+  const requestStartSub = subscribeGatewayEvent(gatewayEventNames.requestStart, (rawPayload) => {
+    const payload = readGatewayPayload(
+      gatewayEventNames.requestStart,
+      rawPayload,
+      isGatewayRequestStartEvent
+    );
+    if (!payload) return;
 
-      ingestTraceStart(payload);
-      ingestCacheAnomalyRequestStart(payload);
+    ingestTraceStart(payload);
+    ingestCacheAnomalyRequestStart(payload);
 
-      if (!shouldLogToConsole("debug")) return;
+    if (!shouldLogToConsole("debug")) return;
 
-      const method = payload.method ?? "未知";
-      const path = payload.path ?? "/";
-      logToConsole(
-        "debug",
-        `网关请求开始：${method} ${path}`,
-        {
-          trace_id: payload.trace_id,
-          cli: payload.cli_key,
-          method,
-          path,
-        },
-        gatewayEventNames.requestStart
-      );
-    }
-  );
+    const method = payload.method ?? "未知";
+    const path = payload.path ?? "/";
+    logToConsole(
+      "debug",
+      `网关请求开始：${method} ${path}`,
+      {
+        trace_id: payload.trace_id,
+        cli: payload.cli_key,
+        method,
+        path,
+      },
+      gatewayEventNames.requestStart
+    );
+  });
 
-  const attemptSub = subscribeGatewayEvent<GatewayAttemptEvent>(
-    gatewayEventNames.attempt,
-    (payload) => {
-      if (!payload) return;
+  const attemptSub = subscribeGatewayEvent(gatewayEventNames.attempt, (rawPayload) => {
+    const payload = readGatewayPayload(
+      gatewayEventNames.attempt,
+      rawPayload,
+      isGatewayAttemptEvent
+    );
+    if (!payload) return;
 
-      ingestTraceAttempt(payload);
+    ingestTraceAttempt(payload);
 
-      // "started" events are high-frequency and intended for realtime UI routing updates.
-      // Keep console noise low by only logging completion/failure events.
-      if (payload.outcome === "started") return;
+    // "started" events are high-frequency and intended for realtime UI routing updates.
+    // Keep console noise low by only logging completion/failure events.
+    if (payload.outcome === "started") return;
 
-      if (!shouldLogToConsole("debug")) return;
+    if (!shouldLogToConsole("debug")) return;
 
-      logToConsole(
-        "debug",
-        attemptTitle(payload),
-        {
-          trace_id: payload.trace_id,
-          cli: payload.cli_key,
-          attempt_index: payload.attempt_index,
-          provider_id: payload.provider_id,
-          provider_name: payload.provider_name,
-          status: payload.status,
-          outcome: payload.outcome,
-          attempt_started_ms: payload.attempt_started_ms,
-          attempt_duration_ms: payload.attempt_duration_ms,
-          circuit_state_before: circuitStateText(payload.circuit_state_before),
-          circuit_state_after: circuitStateText(payload.circuit_state_after),
-          circuit_failure_count: payload.circuit_failure_count ?? null,
-          circuit_failure_threshold: payload.circuit_failure_threshold ?? null,
-        },
-        gatewayEventNames.attempt
-      );
-    }
-  );
+    logToConsole(
+      "debug",
+      attemptTitle(payload),
+      {
+        trace_id: payload.trace_id,
+        cli: payload.cli_key,
+        attempt_index: payload.attempt_index,
+        provider_id: payload.provider_id,
+        provider_name: payload.provider_name,
+        status: payload.status,
+        outcome: payload.outcome,
+        attempt_started_ms: payload.attempt_started_ms,
+        attempt_duration_ms: payload.attempt_duration_ms,
+        circuit_state_before: circuitStateText(payload.circuit_state_before),
+        circuit_state_after: circuitStateText(payload.circuit_state_after),
+        circuit_failure_count: payload.circuit_failure_count ?? null,
+        circuit_failure_threshold: payload.circuit_failure_threshold ?? null,
+      },
+      gatewayEventNames.attempt
+    );
+  });
 
-  const requestSub = subscribeGatewayEvent<GatewayRequestEvent>(
-    gatewayEventNames.request,
-    (payload) => {
-      if (!payload) return;
+  const requestSub = subscribeGatewayEvent(gatewayEventNames.request, (rawPayload) => {
+    const payload = readGatewayPayload(
+      gatewayEventNames.request,
+      rawPayload,
+      isGatewayRequestEvent
+    );
+    if (!payload) return;
 
-      ingestTraceRequest(payload);
-      ingestCacheAnomalyRequest(payload);
+    ingestTraceRequest(payload);
+    ingestCacheAnomalyRequest(payload);
 
-      const hasError = !!payload.error_code;
-      const level = hasError ? "warn" : "debug";
-      if (!shouldLogToConsole(level)) return;
+    const hasError = !!payload.error_code;
+    const level = hasError ? "warn" : "debug";
+    if (!shouldLogToConsole(level)) return;
 
-      const attempts = payload.attempts ?? [];
+    const attempts = payload.attempts ?? [];
 
-      const method = payload.method ?? "未知";
-      const path = payload.path ?? "/";
-      const title = hasError ? `网关请求失败：${method} ${path}` : `网关请求：${method} ${path}`;
+    const method = payload.method ?? "未知";
+    const path = payload.path ?? "/";
+    const title = hasError ? `网关请求失败：${method} ${path}` : `网关请求：${method} ${path}`;
 
-      const outputTokensPerSecond = computeOutputTokensPerSecond(payload);
+    const outputTokensPerSecond = computeOutputTokensPerSecond(payload);
 
-      logToConsole(
-        level,
-        title,
-        {
-          trace_id: payload.trace_id,
-          cli: payload.cli_key,
-          status: payload.status,
-          error_category: payload.error_category ?? null,
-          error_code: payload.error_code,
-          duration_ms: payload.duration_ms,
-          ttfb_ms: payload.ttfb_ms ?? null,
-          output_tokens_per_second: outputTokensPerSecond,
-          input_tokens: payload.input_tokens,
-          output_tokens: payload.output_tokens,
-          total_tokens: payload.total_tokens,
-          cache_read_input_tokens: payload.cache_read_input_tokens,
-          cache_creation_input_tokens: payload.cache_creation_input_tokens,
-          cache_creation_5m_input_tokens: payload.cache_creation_5m_input_tokens,
-          cache_creation_1h_input_tokens: payload.cache_creation_1h_input_tokens ?? null,
-          attempts,
-        },
-        gatewayEventNames.request
-      );
-    }
-  );
+    logToConsole(
+      level,
+      title,
+      {
+        trace_id: payload.trace_id,
+        cli: payload.cli_key,
+        status: payload.status,
+        error_category: payload.error_category ?? null,
+        error_code: payload.error_code,
+        duration_ms: payload.duration_ms,
+        ttfb_ms: payload.ttfb_ms ?? null,
+        output_tokens_per_second: outputTokensPerSecond,
+        input_tokens: payload.input_tokens,
+        output_tokens: payload.output_tokens,
+        total_tokens: payload.total_tokens,
+        cache_read_input_tokens: payload.cache_read_input_tokens,
+        cache_creation_input_tokens: payload.cache_creation_input_tokens,
+        cache_creation_5m_input_tokens: payload.cache_creation_5m_input_tokens,
+        cache_creation_1h_input_tokens: payload.cache_creation_1h_input_tokens ?? null,
+        attempts,
+      },
+      gatewayEventNames.request
+    );
+  });
 
-  const logSub = subscribeGatewayEvent<GatewayLogEvent>(gatewayEventNames.log, (payload) => {
+  const logSub = subscribeGatewayEvent(gatewayEventNames.log, (rawPayload) => {
+    const payload = readGatewayPayload(gatewayEventNames.log, rawPayload, isGatewayLogEvent);
     if (!payload) return;
     const level = normalizeLogLevel(payload.level);
     if (!shouldLogToConsole(level)) return;
@@ -298,63 +479,29 @@ export async function listenGatewayEvents(): Promise<() => void> {
     );
   });
 
-  const circuitSub = subscribeGatewayEvent<GatewayCircuitEvent>(
-    gatewayEventNames.circuit,
-    (payload) => {
-      if (!payload) return;
+  const circuitSub = subscribeGatewayEvent(gatewayEventNames.circuit, (rawPayload) => {
+    const payload = readGatewayPayload(
+      gatewayEventNames.circuit,
+      rawPayload,
+      isGatewayCircuitEvent
+    );
+    if (!payload) return;
 
-      const prevNormalized = normalizeCircuitState(payload.prev_state);
-      const nextNormalized = normalizeCircuitState(payload.next_state);
-      const from = circuitStateText(prevNormalized);
-      const to = circuitStateText(nextNormalized);
-      const provider = payload.provider_name || "未知";
-      const reason = circuitReasonText(payload.reason);
+    const prevNormalized = normalizeCircuitState(payload.prev_state);
+    const nextNormalized = normalizeCircuitState(payload.next_state);
+    const from = circuitStateText(prevNormalized);
+    const to = circuitStateText(nextNormalized);
+    const provider = payload.provider_name || "未知";
+    const reason = circuitReasonText(payload.reason);
 
-      const isTransition =
-        prevNormalized != null && nextNormalized != null && prevNormalized !== nextNormalized;
+    const isTransition =
+      prevNormalized != null && nextNormalized != null && prevNormalized !== nextNormalized;
 
-      if (isTransition) {
-        const title = `熔断状态变更：${provider} ${from} → ${to}`;
-        const level = to === "熔断" ? "warn" : "info";
-        logToConsole(
-          level,
-          title,
-          {
-            trace_id: payload.trace_id,
-            cli: payload.cli_key,
-            provider_id: payload.provider_id,
-            provider_name: payload.provider_name,
-            prev_state: from,
-            next_state: to,
-            failure_count: payload.failure_count,
-            failure_threshold: payload.failure_threshold,
-            open_until: payload.open_until,
-            cooldown_until: payload.cooldown_until ?? null,
-            reason,
-            ts: payload.ts,
-          },
-          gatewayEventNames.circuit
-        );
-        return;
-      }
-
-      const dedupKey = [
-        payload.cli_key,
-        payload.provider_id,
-        payload.reason ?? "",
-        prevNormalized ?? payload.prev_state ?? "",
-        nextNormalized ?? payload.next_state ?? "",
-      ].join(":");
-
-      const now = Date.now();
-      const last = circuitNonTransitionDedup.get(dedupKey);
-      if (last != null && now - last < CIRCUIT_NON_TRANSITION_DEDUP_WINDOW_MS) return;
-      circuitNonTransitionDedup.set(dedupKey, now);
-      if (circuitNonTransitionDedup.size > 500) circuitNonTransitionDedup.clear();
-
-      const title = `Provider 跳过：${provider}（${reason}）`;
+    if (isTransition) {
+      const title = `熔断状态变更：${provider} ${from} → ${to}`;
+      const level = to === "熔断" ? "warn" : "info";
       logToConsole(
-        "debug",
+        level,
         title,
         {
           trace_id: payload.trace_id,
@@ -372,8 +519,44 @@ export async function listenGatewayEvents(): Promise<() => void> {
         },
         gatewayEventNames.circuit
       );
+      return;
     }
-  );
+
+    const dedupKey = [
+      payload.cli_key,
+      payload.provider_id,
+      payload.reason ?? "",
+      prevNormalized ?? payload.prev_state ?? "",
+      nextNormalized ?? payload.next_state ?? "",
+    ].join(":");
+
+    const now = Date.now();
+    const last = circuitNonTransitionDedup.get(dedupKey);
+    if (last != null && now - last < CIRCUIT_NON_TRANSITION_DEDUP_WINDOW_MS) return;
+    circuitNonTransitionDedup.set(dedupKey, now);
+    if (circuitNonTransitionDedup.size > 500) circuitNonTransitionDedup.clear();
+
+    const title = `Provider 跳过：${provider}（${reason}）`;
+    logToConsole(
+      "debug",
+      title,
+      {
+        trace_id: payload.trace_id,
+        cli: payload.cli_key,
+        provider_id: payload.provider_id,
+        provider_name: payload.provider_name,
+        prev_state: from,
+        next_state: to,
+        failure_count: payload.failure_count,
+        failure_threshold: payload.failure_threshold,
+        open_until: payload.open_until,
+        cooldown_until: payload.cooldown_until ?? null,
+        reason,
+        ts: payload.ts,
+      },
+      gatewayEventNames.circuit
+    );
+  });
 
   const readyResults = await Promise.allSettled([
     requestStartSub.ready,

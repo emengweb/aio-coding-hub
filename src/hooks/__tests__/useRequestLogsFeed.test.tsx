@@ -82,7 +82,14 @@ describe("hooks/useRequestLogsFeed", () => {
     vi.useFakeTimers();
     const requestRefetch = vi.fn();
     const incrementalRefresh = vi.fn().mockResolvedValue(null);
-    let eventHandler: ((payload: { phase: "start" | "complete" }) => void) | null = null;
+    let eventHandler:
+      | ((payload: {
+          trace_id: string;
+          cli_key: string;
+          phase: "start" | "complete";
+          ts: number;
+        }) => void)
+      | null = null;
 
     vi.mocked(useRequestLogsListAllQuery).mockReturnValue({
       data: [{ id: 1 }],
@@ -117,15 +124,15 @@ describe("hooks/useRequestLogsFeed", () => {
     expect(subscribeGatewayEvent).toHaveBeenCalledTimes(1);
 
     act(() => {
-      eventHandler?.({ phase: "start" });
-      eventHandler?.({ phase: "complete" });
-      eventHandler?.({ phase: "complete" });
+      eventHandler?.({ trace_id: "t-1", cli_key: "claude", phase: "start", ts: 1 });
+      eventHandler?.({ trace_id: "t-1", cli_key: "claude", phase: "complete", ts: 2 });
+      eventHandler?.({ trace_id: "t-1", cli_key: "claude", phase: "complete", ts: 2 });
     });
 
     expect(incrementalRefresh).not.toHaveBeenCalled();
 
     await act(async () => {
-      vi.advanceTimersByTime(2500);
+      await vi.runOnlyPendingTimersAsync();
       await Promise.resolve();
     });
 
@@ -224,7 +231,14 @@ describe("hooks/useRequestLogsFeed", () => {
   it("cancels a queued live refresh when the window hides before the debounce fires", async () => {
     vi.useFakeTimers();
     const incrementalRefresh = vi.fn().mockResolvedValue(null);
-    let eventHandler: ((payload: { phase: "start" | "complete" }) => void) | null = null;
+    let eventHandler:
+      | ((payload: {
+          trace_id: string;
+          cli_key: string;
+          phase: "start" | "complete";
+          ts: number;
+        }) => void)
+      | null = null;
     let visible = true;
 
     vi.mocked(useDocumentVisibility).mockImplementation(() => visible);
@@ -256,14 +270,14 @@ describe("hooks/useRequestLogsFeed", () => {
     );
 
     act(() => {
-      eventHandler?.({ phase: "complete" });
+      eventHandler?.({ trace_id: "t-1", cli_key: "claude", phase: "complete", ts: 2 });
     });
 
     visible = false;
     view.rerender();
 
     await act(async () => {
-      vi.advanceTimersByTime(400);
+      await vi.runOnlyPendingTimersAsync();
       await Promise.resolve();
     });
 
@@ -280,7 +294,14 @@ describe("hooks/useRequestLogsFeed", () => {
           resolveRefresh = resolve;
         })
     );
-    let eventHandler: ((payload: { phase: "start" | "complete" }) => void) | null = null;
+    let eventHandler:
+      | ((payload: {
+          trace_id: string;
+          cli_key: string;
+          phase: "start" | "complete";
+          ts: number;
+        }) => void)
+      | null = null;
     let visible = true;
 
     vi.mocked(useDocumentVisibility).mockImplementation(() => visible);
@@ -312,15 +333,15 @@ describe("hooks/useRequestLogsFeed", () => {
     );
 
     await act(async () => {
-      eventHandler?.({ phase: "complete" });
-      vi.advanceTimersByTime(400);
+      eventHandler?.({ trace_id: "t-1", cli_key: "claude", phase: "complete", ts: 2 });
+      await vi.runOnlyPendingTimersAsync();
       await Promise.resolve();
     });
 
     expect(incrementalRefresh).toHaveBeenCalledTimes(1);
 
     act(() => {
-      eventHandler?.({ phase: "complete" });
+      eventHandler?.({ trace_id: "t-1", cli_key: "claude", phase: "complete", ts: 2 });
       vi.advanceTimersByTime(400);
     });
 

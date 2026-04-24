@@ -78,7 +78,15 @@ describe("services/app/dataManagement", () => {
     expect(commands.requestLogsClearAll).toHaveBeenCalledWith();
 
     await appDataReset();
-    expect(commands.appDataReset).toHaveBeenCalledWith();
+    expect(commands.appDataReset).toHaveBeenCalledWith(
+      expect.objectContaining({
+        confirm: expect.objectContaining({
+          action: "app_data_reset",
+          resource: "app_data",
+          nonce: expect.any(String),
+        }),
+      })
+    );
 
     await appDataDirGet();
     expect(commands.appDataDirGet).toHaveBeenCalledWith();

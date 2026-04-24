@@ -23,6 +23,7 @@ import {
   type RemapGeneratedKeys,
   type Override,
 } from "../generatedTypeUtils";
+import { createRiskyIpcConfirm } from "../ipcConfirm";
 
 export type {
   ProviderOAuthDisconnectResult,
@@ -40,7 +41,10 @@ export type ProviderAuthMode = GeneratedProviderAuthMode;
 export type ProviderBaseUrlMode = GeneratedProviderBaseUrlMode;
 
 const CLI_KEY_VALUES = ["claude", "codex", "gemini"] as const satisfies readonly CliKey[];
-const PROVIDER_AUTH_MODE_VALUES = ["api_key", "oauth"] as const satisfies readonly ProviderAuthMode[];
+const PROVIDER_AUTH_MODE_VALUES = [
+  "api_key",
+  "oauth",
+] as const satisfies readonly ProviderAuthMode[];
 
 export type ProviderSummary = Override<
   GeneratedProviderSummary,
@@ -50,35 +54,36 @@ export type ProviderSummary = Override<
   }
 >;
 
-const providerUpsertFieldMap = {
-  providerId: "providerId",
-  cliKey: "cliKey",
-  name: "name",
-  baseUrls: "baseUrls",
-  baseUrlMode: "baseUrlMode",
-  authMode: "authMode",
-  apiKey: "apiKey",
-  enabled: "enabled",
-  costMultiplier: "costMultiplier",
-  priority: "priority",
-  claudeModels: "claudeModels",
-  limit5hUsd: "limit5hUsd",
-  limitDailyUsd: "limitDailyUsd",
-  dailyResetMode: "dailyResetMode",
-  dailyResetTime: "dailyResetTime",
-  limitWeeklyUsd: "limitWeeklyUsd",
-  limitMonthlyUsd: "limitMonthlyUsd",
-  limitTotalUsd: "limitTotalUsd",
-  tags: "tags",
-  note: "note",
-  sourceProviderId: "sourceProviderId",
-  bridgeType: "bridgeType",
-  streamIdleTimeoutSeconds: "streamIdleTimeoutSeconds",
-} as const satisfies Record<keyof GeneratedProviderUpsertInput, keyof GeneratedProviderUpsertInput>;
+type ProviderUpsertFieldMap = {
+  providerId: "providerId";
+  cliKey: "cliKey";
+  name: "name";
+  baseUrls: "baseUrls";
+  baseUrlMode: "baseUrlMode";
+  authMode: "authMode";
+  apiKey: "apiKey";
+  enabled: "enabled";
+  costMultiplier: "costMultiplier";
+  priority: "priority";
+  claudeModels: "claudeModels";
+  limit5hUsd: "limit5hUsd";
+  limitDailyUsd: "limitDailyUsd";
+  dailyResetMode: "dailyResetMode";
+  dailyResetTime: "dailyResetTime";
+  limitWeeklyUsd: "limitWeeklyUsd";
+  limitMonthlyUsd: "limitMonthlyUsd";
+  limitTotalUsd: "limitTotalUsd";
+  tags: "tags";
+  note: "note";
+  sourceProviderId: "sourceProviderId";
+  bridgeType: "bridgeType";
+  streamIdleTimeoutSeconds: "streamIdleTimeoutSeconds";
+};
 
 type ProviderUpsertAuthority = RemapGeneratedKeys<
   GeneratedProviderUpsertInput,
-  typeof providerUpsertFieldMap
+  ProviderUpsertFieldMap &
+    Record<keyof GeneratedProviderUpsertInput, keyof GeneratedProviderUpsertInput>
 >;
 
 type ProviderUpsertOptionalKeys =
@@ -88,12 +93,9 @@ type ProviderUpsertOptionalKeys =
 export type ProviderUpsertInput = Omit<
   ProviderUpsertAuthority,
   ProviderUpsertOptionalKeys | "cliKey"
-> &
-  {
-    cliKey: CliKey;
-  } & Partial<
-    Pick<ProviderUpsertAuthority, ProviderUpsertOptionalKeys>
-  >;
+> & {
+  cliKey: CliKey;
+} & Partial<Pick<ProviderUpsertAuthority, ProviderUpsertOptionalKeys>>;
 
 type ProviderUpsertTransportInput = Omit<
   GeneratedProviderUpsertInput,
@@ -215,8 +217,7 @@ export async function providerDelete(providerId: number) {
     title: "删除供应商失败",
     cmd: "provider_delete",
     args: { providerId },
-    invoke: () =>
-      commands.providerDelete(providerId) as Promise<GeneratedCommandResult<boolean>>,
+    invoke: () => commands.providerDelete(providerId) as Promise<GeneratedCommandResult<boolean>>,
   });
 }
 
@@ -229,8 +230,9 @@ export async function providersReorder(
     cmd: "providers_reorder",
     args: { cliKey, orderedProviderIds },
     invoke: async () =>
-      mapGeneratedCommandResponse(await commands.providersReorder(cliKey, orderedProviderIds), (rows) =>
-        rows.map(toProviderSummary)
+      mapGeneratedCommandResponse(
+        await commands.providersReorder(cliKey, orderedProviderIds),
+        (rows) => rows.map(toProviderSummary)
       ),
   });
 }
@@ -246,12 +248,18 @@ export async function providerDuplicate(providerId: number): Promise<ProviderSum
 }
 
 export async function providerCopyApiKeyToClipboard(providerId: number) {
+  const confirm = createRiskyIpcConfirm(
+    "provider_copy_api_key_to_clipboard",
+    `provider:${providerId}:api_key`
+  );
   return invokeGeneratedIpc<boolean>({
     title: "复制 API Key 失败",
     cmd: "provider_copy_api_key_to_clipboard",
-    args: { providerId },
+    args: { providerId, confirm },
     invoke: () =>
-      commands.providerCopyApiKeyToClipboard(providerId) as Promise<GeneratedCommandResult<boolean>>,
+      commands.providerCopyApiKeyToClipboard(providerId, confirm) as Promise<
+        GeneratedCommandResult<boolean>
+      >,
   });
 }
 
@@ -282,7 +290,9 @@ export async function providerOAuthStartFlow(
   });
 }
 
-export async function providerOAuthRefresh(providerId: number): Promise<ProviderOAuthRefreshResult> {
+export async function providerOAuthRefresh(
+  providerId: number
+): Promise<ProviderOAuthRefreshResult> {
   return invokeGeneratedIpc<ProviderOAuthRefreshResult>({
     title: "刷新 OAuth 登录失败",
     cmd: "provider_oauth_refresh",

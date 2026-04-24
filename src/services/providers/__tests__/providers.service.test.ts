@@ -239,7 +239,16 @@ describe("services/providers/providers", () => {
     expect(duplicated).toEqual(createProviderSummary({ id: 42 }));
     expect(copied).toBe(true);
     expect(commands.providerDuplicate).toHaveBeenCalledWith(42);
-    expect(commands.providerCopyApiKeyToClipboard).toHaveBeenCalledWith(42);
+    expect(commands.providerCopyApiKeyToClipboard).toHaveBeenCalledWith(
+      42,
+      expect.objectContaining({
+        confirm: expect.objectContaining({
+          action: "provider_copy_api_key_to_clipboard",
+          resource: "provider:42:api_key",
+          nonce: expect.any(String),
+        }),
+      })
+    );
   });
 
   it("providerOAuthStartFlow uses generated ipc", async () => {

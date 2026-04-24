@@ -1,6 +1,7 @@
 use crate::app_state::{ensure_db_ready, DbInitState};
 use crate::blocking;
 use crate::infra::config_migrate;
+use crate::shared::ipc_confirm::RiskyIpcConfirm;
 
 #[tauri::command]
 #[specta::specta]
@@ -32,11 +33,13 @@ pub(crate) async fn config_import(
     app: tauri::AppHandle,
     db_state: tauri::State<'_, DbInitState>,
     file_path: String,
+    confirm: Option<RiskyIpcConfirm>,
 ) -> Result<config_migrate::ConfigImportResult, String> {
     let file_path = file_path.trim().to_string();
     if file_path.is_empty() {
         return Err("SEC_INVALID_INPUT: file_path is required".to_string());
     }
+    RiskyIpcConfirm::require(confirm, "config_import", file_path.clone())?;
     #[cfg(windows)]
     let app_for_wsl = app.clone();
     let db = ensure_db_ready(app.clone(), db_state.inner()).await?;

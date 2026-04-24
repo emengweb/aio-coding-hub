@@ -78,6 +78,13 @@ describe("services/app/updater", () => {
         rid: 99,
         timeout: 1234,
         onEvent: expect.anything(),
+        confirm: expect.objectContaining({
+          confirm: expect.objectContaining({
+            action: "desktop_updater_download_and_install",
+            resource: "updater:99",
+            nonce: expect.any(String),
+          }),
+        }),
       })
     );
 

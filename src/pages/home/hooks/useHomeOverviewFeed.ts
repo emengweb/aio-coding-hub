@@ -6,6 +6,7 @@ import { useProviderLimitUsageV1Query } from "../../../query/providerLimitUsage"
 import { useUsageHourlySeriesQuery } from "../../../query/usage";
 import { emitBackgroundTaskVisibilityTrigger } from "../../../services/backgroundTasks";
 import { backgroundTaskVisibilityTriggers } from "../../../constants/backgroundTaskContracts";
+import { useHomeFreshnessOwner } from "./useHomeFreshnessOwner";
 
 type UseHomeOverviewFeedOptions = {
   overviewActive: boolean;
@@ -32,9 +33,6 @@ export function useHomeOverviewFeed({
   const requestLogsFeed = useRequestLogsFeed({
     limit: 50,
     enabled: overviewActive,
-    liveUpdatesEnabled: overviewActive,
-    liveUpdateIntervalMs: 1000,
-    refreshOnForeground: overviewActive,
   });
 
   const refetchUsageHeatmapSilently = useCallback(async () => {
@@ -63,11 +61,16 @@ export function useHomeOverviewFeed({
     });
   }, [refetchProviderLimitSilently]);
 
-  const refreshRequestLogs = useCallback(() => {
-    void refetchRequestLogsSilently().then((res) => {
-      if (res?.error) toast("读取使用记录失败：请查看控制台日志");
-    });
-  }, [refetchRequestLogsSilently]);
+  const { refreshRequestLogsNow } = useHomeFreshnessOwner({
+    overviewActive,
+    foregroundActive,
+    requestLogsRefreshWindowMs: 1000,
+    onRefreshRequestLogs: refetchRequestLogsSilently,
+  });
+
+  const refreshRequestLogsFromOwner = useCallback(() => {
+    refreshRequestLogsNow();
+  }, [refreshRequestLogsNow]);
 
   useEffect(() => {
     const wasOverviewActive = previousOverviewActiveRef.current;
@@ -82,7 +85,9 @@ export function useHomeOverviewFeed({
     enabled: overviewActive,
     throttleMs: 1000,
     onForeground: () => {
-      void emitBackgroundTaskVisibilityTrigger(backgroundTaskVisibilityTriggers.homeOverviewVisible);
+      void emitBackgroundTaskVisibilityTrigger(
+        backgroundTaskVisibilityTriggers.homeOverviewVisible
+      );
       void refetchUsageHeatmapSilently();
       void refetchProviderLimitSilently();
     },
@@ -101,6 +106,6 @@ export function useHomeOverviewFeed({
     requestLogsAvailable: requestLogsFeed.requestLogsAvailable,
     refreshUsageHeatmap,
     refreshProviderLimit,
-    refreshRequestLogs,
+    refreshRequestLogs: refreshRequestLogsFromOwner,
   };
 }

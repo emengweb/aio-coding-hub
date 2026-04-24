@@ -1,6 +1,7 @@
 use crate::app_state::{ensure_db_ready, DbInitState};
 use crate::gateway::events::GATEWAY_STATUS_EVENT_NAME;
 use crate::gateway_control::app_ensure_gateway_running;
+use crate::shared::ipc_confirm::RiskyIpcConfirm;
 use crate::{base_url_probe, blocking, providers};
 use serde_json::json;
 use std::path::{Path, PathBuf};
@@ -276,7 +277,13 @@ pub(crate) async fn provider_copy_api_key_to_clipboard(
     app: tauri::AppHandle,
     db_state: tauri::State<'_, DbInitState>,
     provider_id: i64,
+    confirm: Option<RiskyIpcConfirm>,
 ) -> Result<bool, String> {
+    RiskyIpcConfirm::require(
+        confirm,
+        "provider_copy_api_key_to_clipboard",
+        format!("provider:{provider_id}:api_key"),
+    )?;
     let db = ensure_db_ready(app.clone(), db_state.inner()).await?;
     let api_key = blocking::run(
         "provider_copy_api_key_to_clipboard",

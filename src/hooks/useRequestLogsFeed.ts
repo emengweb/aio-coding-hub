@@ -1,9 +1,12 @@
 import { useCallback, useEffect, useMemo, useRef } from "react";
 import { gatewayEventNames } from "../constants/gatewayEvents";
-import { useRequestLogsIncrementalRefreshMutation, useRequestLogsListAllQuery } from "../query/requestLogs";
+import {
+  useRequestLogsIncrementalRefreshMutation,
+  useRequestLogsListAllQuery,
+} from "../query/requestLogs";
 import { logToConsole } from "../services/consoleLog";
 import { subscribeGatewayEvent } from "../services/gateway/gatewayEventBus";
-import type { GatewayRequestSignalEvent } from "../services/gateway/gatewayEvents";
+import { isGatewayRequestSignalEvent } from "../services/gateway/gatewayEvents";
 import { isRequestSignalComplete } from "../services/gateway/requestLogState";
 import { useDocumentVisibility } from "./useDocumentVisibility";
 import { useWindowForeground } from "./useWindowForeground";
@@ -123,20 +126,17 @@ export function useRequestLogsFeed({
     }
 
     let cancelled = false;
-    const requestSignalSub = subscribeGatewayEvent<GatewayRequestSignalEvent>(
-      gatewayEventNames.requestSignal,
-      (payload) => {
-        if (cancelled || !payload) {
-          return;
-        }
-
-        if (!isRequestSignalComplete(payload)) {
-          return;
-        }
-
-        scheduleLiveRefresh();
+    const requestSignalSub = subscribeGatewayEvent(gatewayEventNames.requestSignal, (payload) => {
+      if (cancelled || !isGatewayRequestSignalEvent(payload)) {
+        return;
       }
-    );
+
+      if (!isRequestSignalComplete(payload)) {
+        return;
+      }
+
+      scheduleLiveRefresh();
+    });
 
     void Promise.allSettled([requestSignalSub.ready]).then((results) => {
       if (cancelled) {
@@ -179,7 +179,8 @@ export function useRequestLogsFeed({
   const requestLogs = useMemo(() => requestLogsQuery.data ?? [], [requestLogsQuery.data]);
   const requestLogsLoading = requestLogsQuery.isLoading;
   const requestLogsRefreshing =
-    (requestLogsQuery.isFetching && !requestLogsQuery.isLoading) || incrementalRefreshMutation.isPending;
+    (requestLogsQuery.isFetching && !requestLogsQuery.isLoading) ||
+    incrementalRefreshMutation.isPending;
   const requestLogsAvailable: boolean | null = requestLogsQuery.isLoading
     ? null
     : requestLogsQuery.data != null;

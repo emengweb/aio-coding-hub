@@ -43,7 +43,9 @@ describe("services/app/configMigrate", () => {
   it("treats null invoke result as error with runtime", async () => {
     vi.mocked(commands.configExport).mockResolvedValueOnce({ status: "ok", data: null as any });
 
-    await expect(configExport("/tmp/aio-export.json")).rejects.toThrow("IPC_NULL_RESULT: config_export");
+    await expect(configExport("/tmp/aio-export.json")).rejects.toThrow(
+      "IPC_NULL_RESULT: config_export"
+    );
   });
 
   it("invokes config migrate commands with expected parameters", async () => {
@@ -66,6 +68,15 @@ describe("services/app/configMigrate", () => {
     expect(commands.configExport).toHaveBeenCalledWith("/tmp/aio-export.json");
 
     await configImport("/tmp/aio-import.json");
-    expect(commands.configImport).toHaveBeenCalledWith("/tmp/aio-import.json");
+    expect(commands.configImport).toHaveBeenCalledWith(
+      "/tmp/aio-import.json",
+      expect.objectContaining({
+        confirm: expect.objectContaining({
+          action: "config_import",
+          resource: "/tmp/aio-import.json",
+          nonce: expect.any(String),
+        }),
+      })
+    );
   });
 });

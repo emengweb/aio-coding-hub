@@ -12,6 +12,7 @@ import { cliShortLabel } from "../../constants/clis";
 import { gatewayEventNames } from "../../constants/gatewayEvents";
 import { logToConsole } from "../consoleLog";
 import { subscribeGatewayEvent } from "../gateway/gatewayEventBus";
+import { isGatewayRequestSignalEvent } from "../gateway/gatewayEvents";
 import { noticeSend } from "./notice";
 import type { GatewayRequestSignalEvent } from "../gateway/gatewayEvents";
 
@@ -241,17 +242,14 @@ async function maybeNotify(cliKey: string) {
 // ---------------------------------------------------------------------------
 
 export async function listenTaskCompleteNotifyEvents(): Promise<() => void> {
-  const requestSignalSub = subscribeGatewayEvent<GatewayRequestSignalEvent>(
-    gatewayEventNames.requestSignal,
-    (payload) => {
-      if (!payload) return;
-      if (payload.phase === "start") {
-        handleRequestStart(payload);
-        return;
-      }
-      handleRequestComplete(payload);
+  const requestSignalSub = subscribeGatewayEvent(gatewayEventNames.requestSignal, (payload) => {
+    if (!isGatewayRequestSignalEvent(payload)) return;
+    if (payload.phase === "start") {
+      handleRequestStart(payload);
+      return;
     }
-  );
+    handleRequestComplete(payload);
+  });
   const readyResults = await Promise.allSettled([requestSignalSub.ready]);
   const subscribeFailed = readyResults.some((result) => result.status === "rejected");
   if (subscribeFailed) {

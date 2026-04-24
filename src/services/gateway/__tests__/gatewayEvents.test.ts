@@ -1,3 +1,4 @@
+import { act, renderHook } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 import { gatewayEventNames } from "../../../constants/gatewayEvents";
 import { clearTauriEventListeners, tauriListen, tauriUnlisten } from "../../../test/mocks/tauri";
@@ -28,6 +29,7 @@ describe("services/gateway/gatewayEvents", () => {
   it("registers listeners and handles payload branches", async () => {
     setTauriRuntime();
     vi.resetModules();
+    vi.clearAllMocks();
     vi.useFakeTimers();
     vi.setSystemTime(0);
 
@@ -204,6 +206,97 @@ describe("services/gateway/gatewayEvents", () => {
         ts: 0,
       },
     } as any);
+
+    unlisten();
+    vi.useRealTimers();
+  });
+
+  it("accepts valid trace payloads and drops invalid payloads observably", async () => {
+    setTauriRuntime();
+    vi.resetModules();
+    vi.clearAllMocks();
+    vi.useFakeTimers();
+    vi.setSystemTime(0);
+    clearTauriEventListeners();
+
+    vi.mocked(tauriListen).mockResolvedValue(tauriUnlisten);
+
+    const { setConsoleLogMinLevel, useConsoleLogs } = await import("../../consoleLog");
+    setConsoleLogMinLevel("debug");
+
+    const { useTraceStore } = await import("../traceStore");
+    const { listenGatewayEvents } = await import("../gatewayEvents");
+    const unlisten = await listenGatewayEvents();
+
+    const traceResult = renderHook(() => useTraceStore()).result;
+    const consoleResult = renderHook(() => useConsoleLogs()).result;
+
+    const handlerFor = (eventName: string) =>
+      vi
+        .mocked(tauriListen)
+        .mock.calls.slice()
+        .reverse()
+        .find((call) => call[0] === eventName)?.[1];
+
+    act(() => {
+      handlerFor(gatewayEventNames.requestStart)?.({
+        payload: {
+          trace_id: "valid-trace",
+          cli_key: "claude",
+          method: "POST",
+          path: "/v1/messages",
+          query: null,
+          requested_model: "claude-3",
+          ts: 0,
+        },
+      } as any);
+    });
+
+    expect(traceResult.current.traces).toHaveLength(1);
+    expect(traceResult.current.traces[0]?.trace_id).toBe("valid-trace");
+
+    act(() => {
+      handlerFor(gatewayEventNames.requestStart)?.({
+        payload: {
+          trace_id: "invalid-trace",
+          cli_key: "claude",
+          method: "POST",
+          path: "/v1/messages",
+          query: null,
+          ts: "bad-ts",
+        },
+      } as any);
+    });
+
+    act(() => {
+      handlerFor(gatewayEventNames.requestStart)?.({
+        payload: {
+          trace_id: "invalid-null-method",
+          cli_key: "claude",
+          method: null,
+          path: "/v1/messages",
+          query: null,
+          requested_model: "claude-3",
+          ts: 0,
+        },
+      } as any);
+    });
+
+    expect(traceResult.current.traces.map((trace) => trace.trace_id)).toEqual(["valid-trace"]);
+
+    act(() => {
+      vi.runOnlyPendingTimers();
+    });
+
+    expect(consoleResult.current.some((entry) => entry.eventType === "gateway:event_guard")).toBe(
+      true
+    );
+
+    const guardEntry = consoleResult.current.find(
+      (entry) => entry.eventType === "gateway:event_guard"
+    );
+    expect(guardEntry?.level).toBe("warn");
+    expect(guardEntry?.details).toMatchObject({ event: gatewayEventNames.requestStart });
 
     unlisten();
     vi.useRealTimers();

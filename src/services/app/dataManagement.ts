@@ -1,9 +1,6 @@
-import {
-  commands,
-  type ClearRequestLogsResult,
-  type DbDiskUsage,
-} from "../../generated/bindings";
+import { commands, type ClearRequestLogsResult, type DbDiskUsage } from "../../generated/bindings";
 import { invokeGeneratedIpc, type GeneratedCommandResult } from "../generatedIpc";
+import { createRiskyIpcConfirm } from "../ipcConfirm";
 
 export type { ClearRequestLogsResult, DbDiskUsage };
 
@@ -25,10 +22,12 @@ export async function requestLogsClearAll() {
 }
 
 export async function appDataReset() {
+  const confirm = createRiskyIpcConfirm("app_data_reset", "app_data");
   return invokeGeneratedIpc<boolean>({
     title: "重置应用数据失败",
     cmd: "app_data_reset",
-    invoke: () => commands.appDataReset() as Promise<GeneratedCommandResult<boolean>>,
+    args: { confirm },
+    invoke: () => commands.appDataReset(confirm) as Promise<GeneratedCommandResult<boolean>>,
   });
 }
 

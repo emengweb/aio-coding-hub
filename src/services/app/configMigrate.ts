@@ -1,5 +1,6 @@
 import { commands, type ConfigImportResult } from "../../generated/bindings";
 import { invokeGeneratedIpc, type GeneratedCommandResult } from "../generatedIpc";
+import { createRiskyIpcConfirm } from "../ipcConfirm";
 
 export type { ConfigImportResult } from "../../generated/bindings";
 
@@ -13,11 +14,14 @@ export async function configExport(filePath: string) {
 }
 
 export async function configImport(filePath: string) {
+  const confirm = createRiskyIpcConfirm("config_import", filePath);
   return invokeGeneratedIpc<ConfigImportResult>({
     title: "导入配置失败",
     cmd: "config_import",
-    args: { filePath },
+    args: { filePath, confirm },
     invoke: () =>
-      commands.configImport(filePath) as Promise<GeneratedCommandResult<ConfigImportResult>>,
+      commands.configImport(filePath, confirm) as Promise<
+        GeneratedCommandResult<ConfigImportResult>
+      >,
   });
 }

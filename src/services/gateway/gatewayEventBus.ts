@@ -69,14 +69,12 @@ function ensureListening(event: GatewayEventName, entry: Entry): Promise<void> {
   return entry.init;
 }
 
-export function subscribeGatewayEvent<TPayload>(
+export function subscribeGatewayEvent(
   event: GatewayEventName,
-  handler: (payload: TPayload) => void
+  handler: (payload: unknown) => void
 ): GatewayEventSubscription {
   const entry = getOrCreateEntry(event);
-  const wrapped: Handler = (payload) => {
-    handler(payload as TPayload);
-  };
+  const wrapped: Handler = handler;
 
   entry.handlers.add(wrapped);
   const ready = ensureListening(event, entry);

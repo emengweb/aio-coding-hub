@@ -10,6 +10,7 @@ import {
   type SkillUpdateInfo as GeneratedSkillUpdateInfo,
 } from "../../generated/bindings";
 import { invokeGeneratedIpc, type GeneratedCommandResult } from "../generatedIpc";
+import { createRiskyIpcConfirm } from "../ipcConfirm";
 import type { CliKey } from "../providers/providers";
 
 export type SkillRepoSummary = GeneratedSkillRepoSummary;
@@ -223,22 +224,25 @@ export async function skillsLocalList(workspaceId: number) {
     cmd: "skills_local_list",
     args: { workspaceId },
     invoke: () =>
-      commands.skillsLocalList(workspaceId) as Promise<
-        GeneratedCommandResult<LocalSkillSummary[]>
-      >,
+      commands.skillsLocalList(workspaceId) as Promise<GeneratedCommandResult<LocalSkillSummary[]>>,
   });
 }
 
 export async function skillLocalDelete(input: SkillLocalDeleteInput) {
+  const confirm = createRiskyIpcConfirm(
+    "skill_local_delete",
+    `workspace:${input.workspaceId}:skill-local:${input.dirName}`
+  );
   return invokeGeneratedIpc<boolean>({
     title: "删除本地技能失败",
     cmd: "skill_local_delete",
     args: {
       workspaceId: input.workspaceId,
       dirName: input.dirName,
+      confirm,
     },
     invoke: () =>
-      commands.skillLocalDelete(input.workspaceId, input.dirName) as Promise<
+      commands.skillLocalDelete(input.workspaceId, input.dirName, confirm) as Promise<
         GeneratedCommandResult<boolean>
       >,
   });
@@ -279,8 +283,7 @@ export async function skillsPathsGet(cliKey: CliKey) {
     title: "读取技能路径失败",
     cmd: "skills_paths_get",
     args: { cliKey },
-    invoke: () =>
-      commands.skillsPathsGet(cliKey) as Promise<GeneratedCommandResult<SkillsPaths>>,
+    invoke: () => commands.skillsPathsGet(cliKey) as Promise<GeneratedCommandResult<SkillsPaths>>,
   });
 }
 
@@ -290,9 +293,7 @@ export async function skillCheckUpdates(workspaceId: number) {
     cmd: "skill_check_updates",
     args: { workspaceId },
     invoke: () =>
-      commands.skillCheckUpdates(workspaceId) as Promise<
-        GeneratedCommandResult<SkillUpdateInfo[]>
-      >,
+      commands.skillCheckUpdates(workspaceId) as Promise<GeneratedCommandResult<SkillUpdateInfo[]>>,
   });
 }
 

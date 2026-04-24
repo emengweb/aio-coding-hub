@@ -1,6 +1,7 @@
 //! Usage: Skills management related Tauri commands.
 
 use crate::app_state::{ensure_db_ready, DbInitState};
+use crate::shared::ipc_confirm::RiskyIpcConfirm;
 use crate::{blocking, skills};
 
 #[tauri::command]
@@ -199,7 +200,13 @@ pub(crate) async fn skill_local_delete(
     db_state: tauri::State<'_, DbInitState>,
     workspace_id: i64,
     dir_name: String,
+    confirm: Option<RiskyIpcConfirm>,
 ) -> Result<bool, String> {
+    RiskyIpcConfirm::require(
+        confirm,
+        "skill_local_delete",
+        format!("workspace:{workspace_id}:skill-local:{dir_name}"),
+    )?;
     let db = ensure_db_ready(app.clone(), db_state.inner()).await?;
     tauri::async_runtime::spawn_blocking(move || {
         skills::delete_local(&app, &db, workspace_id, &dir_name)

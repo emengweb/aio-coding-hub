@@ -1,6 +1,7 @@
 import { Channel } from "@tauri-apps/api/core";
 import { commands } from "../../generated/bindings";
 import { invokeGeneratedIpc, type GeneratedCommandResult } from "../generatedIpc";
+import { createRiskyIpcConfirm } from "../ipcConfirm";
 import { invokeTauriOrNull } from "../tauriInvoke";
 
 export const DESKTOP_UPDATER_HANDWRITTEN_COMMAND = "desktop_updater_download_and_install";
@@ -111,6 +112,10 @@ export async function desktopUpdaterDownloadAndInstall(options: {
     }
     onEvent?.(evt);
   });
+  const confirm = createRiskyIpcConfirm(
+    "desktop_updater_download_and_install",
+    `updater:${options.rid}`
+  );
 
   return invokeTauriOrNull<boolean>(
     DESKTOP_UPDATER_HANDWRITTEN_COMMAND,
@@ -118,6 +123,7 @@ export async function desktopUpdaterDownloadAndInstall(options: {
       rid: options.rid,
       onEvent: channel,
       timeout: typeof options.timeoutMs === "number" ? options.timeoutMs : null,
+      confirm,
     },
     { timeoutMs: null }
   );

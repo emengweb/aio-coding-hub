@@ -57,9 +57,7 @@ vi.mock("../../consoleLog", async () => {
 });
 
 describe("services/workspace/skills", () => {
-  function createSkillRepoSummary(
-    overrides: Partial<SkillRepoSummary> = {}
-  ): SkillRepoSummary {
+  function createSkillRepoSummary(overrides: Partial<SkillRepoSummary> = {}): SkillRepoSummary {
     return {
       id: 1,
       git_url: "https://example.com/repo.git",
@@ -90,9 +88,7 @@ describe("services/workspace/skills", () => {
     };
   }
 
-  function createLocalSkillSummary(
-    overrides: Partial<LocalSkillSummary> = {}
-  ): LocalSkillSummary {
+  function createLocalSkillSummary(overrides: Partial<LocalSkillSummary> = {}): LocalSkillSummary {
     return {
       dir_name: "skill-a",
       path: "/tmp/skill-a",
@@ -235,7 +231,17 @@ describe("services/workspace/skills", () => {
     expect(commands.skillsLocalList).toHaveBeenCalledWith(1);
 
     await skillLocalDelete({ workspaceId: 1, dirName: "my-skill" });
-    expect(commands.skillLocalDelete).toHaveBeenCalledWith(1, "my-skill");
+    expect(commands.skillLocalDelete).toHaveBeenCalledWith(
+      1,
+      "my-skill",
+      expect.objectContaining({
+        confirm: expect.objectContaining({
+          action: "skill_local_delete",
+          resource: "workspace:1:skill-local:my-skill",
+          nonce: expect.any(String),
+        }),
+      })
+    );
 
     await skillImportLocal({ workspaceId: 1, dirName: "my-skill" });
     expect(commands.skillImportLocal).toHaveBeenCalledWith(1, "my-skill");
