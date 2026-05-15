@@ -531,7 +531,9 @@ pub(super) async fn handle_success_non_stream(
             } else {
                 GatewayErrorCode::UpstreamReadError.as_str()
             };
-            let decision = if retry_index < max_attempts_per_provider {
+            let decision = if kind == "timeout" {
+                FailoverDecision::SwitchProvider
+            } else if retry_index < max_attempts_per_provider {
                 FailoverDecision::RetrySameProvider
             } else {
                 FailoverDecision::SwitchProvider

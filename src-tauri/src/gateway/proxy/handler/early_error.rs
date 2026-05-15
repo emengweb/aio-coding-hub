@@ -85,9 +85,9 @@ pub(super) fn force_provider_if_requested(
     providers: &mut Vec<crate::providers::ProviderForGateway>,
     provider_id: Option<i64>,
     special_settings: &SpecialSettings,
-) {
+) -> bool {
     let Some(provider_id) = provider_id else {
-        return;
+        return false;
     };
 
     if let Some(index) = providers.iter().position(|p| p.id == provider_id) {
@@ -104,8 +104,10 @@ pub(super) fn force_provider_if_requested(
                 "providerId": provider_id,
             }),
         );
+        false
     } else {
         providers.clear();
+        true
     }
 }
 

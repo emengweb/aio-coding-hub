@@ -155,11 +155,7 @@ pub(super) async fn handle_success_event_stream(
             }
             FirstChunkProbe::Timeout => {
                 let error_code = GatewayErrorCode::UpstreamTimeout.as_str();
-                let decision = if retry_index < max_attempts_per_provider {
-                    FailoverDecision::RetrySameProvider
-                } else {
-                    FailoverDecision::SwitchProvider
-                };
+                let decision = FailoverDecision::SwitchProvider;
 
                 let outcome = format!(
                     "stream_first_byte_timeout: category={} code={} decision={} timeout_secs={}",
