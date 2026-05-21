@@ -26,7 +26,7 @@ function run() {
 
   const child = spawn(
     "cargo",
-    ["run", "--locked", "--features", "bindings-export", "--bin", "export-bindings", ...userArgs],
+    ["run", "--locked", "--example", "export-bindings", ...userArgs],
     {
       cwd: tauriRoot,
       stdio: "inherit",
