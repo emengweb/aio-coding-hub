@@ -519,6 +519,35 @@ describe("query/usage", () => {
     expect(usageDayDetailV1).not.toHaveBeenCalled();
   });
 
+  it("does not validate empty day detail input when disabled", async () => {
+    setTauriRuntime();
+
+    const client = createTestQueryClient();
+    const wrapper = createQueryWrapper(client);
+
+    expect(() =>
+      renderHook(
+        () =>
+          useUsageDayDetailV1Query(
+            {
+              day: "",
+              cliKey: null,
+              providerId: null,
+              folderLimit: 8,
+              folderKeys: null,
+              excludeCx2CcGatewayBridge: true,
+            },
+            { enabled: false }
+          ),
+        { wrapper }
+      )
+    ).not.toThrow();
+    await Promise.resolve();
+
+    expect(usageDayDetailV1).not.toHaveBeenCalled();
+    expect(client.getQueryState(usageKeys.dayDetailV1Disabled())).toBeTruthy();
+  });
+
   it("calls usageFolderOptionsV1 with tauri runtime", async () => {
     setTauriRuntime();
 

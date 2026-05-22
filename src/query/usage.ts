@@ -15,6 +15,7 @@ import {
   normalizeUsageProviderCacheRateTrendLimit,
   normalizeUsageQueryInputV2,
   normalizeUsageSummaryInput,
+  type NormalizedUsageDayDetailInput,
   type UsageDayDetailInput,
   type UsagePeriod,
   type UsageQueryInputV2,
@@ -107,19 +108,32 @@ export function useUsageLeaderboardV2Query(
 }
 
 export function useUsageDayDetailV1Query(input: UsageDayDetailInput, options?: UsageQueryOptions) {
-  const normalizedInput = normalizeUsageDayDetailInput(input);
+  const requestedEnabled = options?.enabled ?? true;
+  let normalizedInput: NormalizedUsageDayDetailInput | null = null;
+  try {
+    normalizedInput = normalizeUsageDayDetailInput(input);
+  } catch (caught) {
+    if (requestedEnabled) throw caught;
+  }
 
   return useQuery({
-    queryKey: usageKeys.dayDetailV1({
-      day: normalizedInput.day,
-      cliKey: normalizedInput.cliKey ?? null,
-      providerId: normalizedInput.providerId ?? null,
-      folderLimit: normalizedInput.folderLimit,
-      folderKeys: normalizedInput.folderKeys ?? null,
-      excludeCx2CcGatewayBridge: normalizedInput.excludeCx2CcGatewayBridge ?? null,
-    }),
-    queryFn: () => usageDayDetailV1(normalizedInput),
-    enabled: options?.enabled ?? true,
+    queryKey: normalizedInput
+      ? usageKeys.dayDetailV1({
+          day: normalizedInput.day,
+          cliKey: normalizedInput.cliKey ?? null,
+          providerId: normalizedInput.providerId ?? null,
+          folderLimit: normalizedInput.folderLimit,
+          folderKeys: normalizedInput.folderKeys ?? null,
+          excludeCx2CcGatewayBridge: normalizedInput.excludeCx2CcGatewayBridge ?? null,
+        })
+      : usageKeys.dayDetailV1Disabled(),
+    queryFn: () => {
+      if (!normalizedInput) {
+        throw new Error("SEC_INVALID_INPUT: invalid day detail query");
+      }
+      return usageDayDetailV1(normalizedInput);
+    },
+    enabled: requestedEnabled && normalizedInput != null,
     placeholderData: keepPreviousData,
     refetchInterval: options?.refetchIntervalMs ?? false,
   });

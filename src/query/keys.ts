@@ -131,6 +131,7 @@ export const usageKeys = {
       normalizeKeyParts(input.folderKeys ?? []),
       input.excludeCx2CcGatewayBridge ?? null,
     ] as const,
+  dayDetailV1Disabled: () => [...usageAllKey, "dayDetailV1", "disabled"] as const,
   folderOptionsV1: (
     period: UsagePeriod,
     input: {
