@@ -35,6 +35,14 @@ fn claude_observation_matches_vendor_default_log_contract() {
 }
 
 #[test]
+fn codex_model_discovery_requests_are_not_observed() {
+    assert!(!should_observe_request("codex", "/v1/models"));
+    assert!(!should_observe_request("codex", "/v1/models/"));
+    assert!(!should_observe_request("codex", "/models"));
+    assert!(should_observe_request("codex", "/v1/responses"));
+}
+
+#[test]
 fn claude_probe_requests_are_not_observed() {
     let headers = HeaderMap::new();
     let probe = json!({

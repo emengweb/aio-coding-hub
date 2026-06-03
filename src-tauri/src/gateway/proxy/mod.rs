@@ -42,7 +42,18 @@ fn is_claude_count_tokens_request(cli_key: &str, forwarded_path: &str) -> bool {
 }
 
 fn should_observe_request(cli_key: &str, forwarded_path: &str) -> bool {
+    if cli_key == "codex" && is_codex_model_discovery_request(forwarded_path) {
+        return false;
+    }
+
     cli_key != "claude" || forwarded_path == CLAUDE_LOGGED_MESSAGES_PATH
+}
+
+fn is_codex_model_discovery_request(forwarded_path: &str) -> bool {
+    matches!(
+        forwarded_path.trim_end_matches('/'),
+        "/v1/models" | "/models"
+    )
 }
 
 fn is_claude_probe_request(
