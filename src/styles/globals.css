@@ -190,7 +190,7 @@
     --theme-option-system: 199 90% 60%;
 
     /* Sidebar control center */
-    --sidebar-control: 220 16% 13% / 0.65;
+    --sidebar-control: 220 16% 13% / 0.55;
     --sidebar-control-border: 220 14% 18% / 0.65;
     --sidebar-control-muted: 220 12% 19% / 0.8;
     --sidebar-control-inset: 220 20% 6% / 0.4;
@@ -353,7 +353,9 @@ body {
   scrollbar-gutter: auto;
 }
 
-/* Fallback for non-WebKit browsers */
+/* Fallback for non-WebKit browsers (Firefox / most Linux WebKitGTK builds):
+   overflow:overlay is unsupported, so reserve gutter space to avoid the
+   scrollbar pushing fixed-width panels (e.g. the 248px Sidebar) on scroll. */
 @supports not (overflow-y: overlay) {
   .scrollbar-overlay {
     overflow-y: auto;
