@@ -1396,8 +1396,8 @@ mod tests {
         assert!(direct_request.starts_with("GET / HTTP/1.1"));
     }
 
-    #[tokio::test(flavor = "current_thread")]
-    async fn test_configured_upstream_user_agent_overrides_request_header() {
+    #[test]
+    fn test_configured_upstream_user_agent_overrides_request_header() {
         let _guard = crate::test_support::test_env_lock();
         for key in [
             "HTTP_PROXY",
@@ -1412,38 +1412,44 @@ mod tests {
 
         apply_proxy(None).expect("reset client before upstream UA test");
 
-        let (origin_url, request_rx) = spawn_http_origin_server();
-        let mut headers = HeaderMap::new();
-        headers.insert(USER_AGENT, HeaderValue::from_static("client-agent/0"));
-        apply_configured_upstream_user_agent(
-            &mut headers,
-            "codex",
-            "gateway-agent/1",
-            "claude-agent/2",
-        )
-        .expect("apply configured upstream user agent");
+        let rt = tokio::runtime::Builder::new_current_thread()
+            .enable_all()
+            .build()
+            .expect("test runtime");
+        rt.block_on(async {
+            let (origin_url, request_rx) = spawn_http_origin_server();
+            let mut headers = HeaderMap::new();
+            headers.insert(USER_AGENT, HeaderValue::from_static("client-agent/0"));
+            apply_configured_upstream_user_agent(
+                &mut headers,
+                "codex",
+                "gateway-agent/1",
+                "claude-agent/2",
+            )
+            .expect("apply configured upstream user agent");
 
-        let response = get()
-            .get(&origin_url)
-            .headers(headers)
-            .send()
-            .await
-            .expect("direct request with configured upstream user agent");
-        assert_eq!(response.status(), StatusCode::OK);
+            let response = get()
+                .get(&origin_url)
+                .headers(headers)
+                .send()
+                .await
+                .expect("direct request with configured upstream user agent");
+            assert_eq!(response.status(), StatusCode::OK);
 
-        let request = request_rx
-            .recv_timeout(Duration::from_secs(3))
-            .expect("origin should receive direct request");
-        assert_eq!(
-            request_header_value(&request, "user-agent"),
-            Some("gateway-agent/1".to_string())
-        );
+            let request = request_rx
+                .recv_timeout(Duration::from_secs(3))
+                .expect("origin should receive direct request");
+            assert_eq!(
+                request_header_value(&request, "user-agent"),
+                Some("gateway-agent/1".to_string())
+            );
+        });
 
         apply_proxy(None).expect("reset client after upstream UA test");
     }
 
-    #[tokio::test(flavor = "current_thread")]
-    async fn test_claude_upstream_user_agent_uses_custom_or_gateway_fallback() {
+    #[test]
+    fn test_claude_upstream_user_agent_uses_custom_or_gateway_fallback() {
         let _guard = crate::test_support::test_env_lock();
         for key in [
             "HTTP_PROXY",
@@ -1458,55 +1464,61 @@ mod tests {
 
         apply_proxy(None).expect("reset client before claude UA test");
 
-        let (fallback_url, fallback_rx) = spawn_http_origin_server();
-        let mut fallback_headers = HeaderMap::new();
-        fallback_headers.insert(USER_AGENT, HeaderValue::from_static("client-agent/0"));
-        apply_configured_upstream_user_agent(
-            &mut fallback_headers,
-            "claude",
-            "gateway-agent/1",
-            "",
-        )
-        .expect("apply claude fallback user agent");
-        let fallback_response = get()
-            .get(&fallback_url)
-            .headers(fallback_headers)
-            .send()
-            .await
-            .expect("direct request with claude fallback user agent");
-        assert_eq!(fallback_response.status(), StatusCode::OK);
-        let fallback_request = fallback_rx
-            .recv_timeout(Duration::from_secs(3))
-            .expect("origin should receive fallback request");
-        assert_eq!(
-            request_header_value(&fallback_request, "user-agent"),
-            Some("gateway-agent/1".to_string())
-        );
+        let rt = tokio::runtime::Builder::new_current_thread()
+            .enable_all()
+            .build()
+            .expect("test runtime");
+        rt.block_on(async {
+            let (fallback_url, fallback_rx) = spawn_http_origin_server();
+            let mut fallback_headers = HeaderMap::new();
+            fallback_headers.insert(USER_AGENT, HeaderValue::from_static("client-agent/0"));
+            apply_configured_upstream_user_agent(
+                &mut fallback_headers,
+                "claude",
+                "gateway-agent/1",
+                "",
+            )
+            .expect("apply claude fallback user agent");
+            let fallback_response = get()
+                .get(&fallback_url)
+                .headers(fallback_headers)
+                .send()
+                .await
+                .expect("direct request with claude fallback user agent");
+            assert_eq!(fallback_response.status(), StatusCode::OK);
+            let fallback_request = fallback_rx
+                .recv_timeout(Duration::from_secs(3))
+                .expect("origin should receive fallback request");
+            assert_eq!(
+                request_header_value(&fallback_request, "user-agent"),
+                Some("gateway-agent/1".to_string())
+            );
 
-        let (custom_url, custom_rx) = spawn_http_origin_server();
-        let mut custom_headers = HeaderMap::new();
-        custom_headers.insert(USER_AGENT, HeaderValue::from_static("client-agent/0"));
-        apply_configured_upstream_user_agent(
-            &mut custom_headers,
-            "claude",
-            "gateway-agent/1",
-            "claude-agent/2",
-        )
-        .expect("apply claude custom user agent");
-        let custom_response = get()
-            .get(&custom_url)
-            .headers(custom_headers)
-            .send()
-            .await
-            .expect("direct request with claude custom user agent");
-        assert_eq!(custom_response.status(), StatusCode::OK);
-        let custom_request = custom_rx
-            .recv_timeout(Duration::from_secs(3))
-            .expect("origin should receive custom request");
-        assert_eq!(
-            request_header_value(&custom_request, "user-agent"),
-            Some("claude-agent/2".to_string())
-        );
+            let (custom_url, custom_rx) = spawn_http_origin_server();
+            let mut custom_headers = HeaderMap::new();
+            custom_headers.insert(USER_AGENT, HeaderValue::from_static("client-agent/0"));
+            apply_configured_upstream_user_agent(
+                &mut custom_headers,
+                "claude",
+                "gateway-agent/1",
+                "claude-agent/2",
+            )
+            .expect("apply claude custom user agent");
+            let custom_response = get()
+                .get(&custom_url)
+                .headers(custom_headers)
+                .send()
+                .await
+                .expect("direct request with claude custom user agent");
+            assert_eq!(custom_response.status(), StatusCode::OK);
+            let custom_request = custom_rx
+                .recv_timeout(Duration::from_secs(3))
+                .expect("origin should receive custom request");
+            assert_eq!(
+                request_header_value(&custom_request, "user-agent"),
+                Some("claude-agent/2".to_string())
+            );
+        });
 
         apply_proxy(None).expect("reset client after claude UA test");
     }
