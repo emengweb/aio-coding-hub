@@ -85,6 +85,10 @@ function renderSettingsMainColumn(
     setStartMinimized: vi.fn(),
     trayEnabled: true,
     setTrayEnabled: vi.fn(),
+    gatewayUserAgent: "",
+    setGatewayUserAgent: vi.fn(),
+    claudeProviderUserAgent: "",
+    setClaudeProviderUserAgent: vi.fn(),
     logRetentionDays: 30,
     setLogRetentionDays: vi.fn(),
     enableDebugLog: false,
@@ -97,11 +101,14 @@ function renderSettingsMainColumn(
     sendSystemNotificationTest: vi.fn().mockResolvedValue(undefined),
   };
 
+  const props = { ...base, ...overrides };
+
   return {
     client,
+    props,
     ...render(
       <QueryClientProvider client={client}>
-        <SettingsMainColumn {...base} {...overrides} />
+        <SettingsMainColumn {...props} />
       </QueryClientProvider>
     ),
   };
@@ -241,6 +248,59 @@ describe("pages/settings/SettingsMainColumn", () => {
     fireEvent.click(screen.getByRole("button", { name: "最近30天" }));
     expect(setHomeUsagePeriod).toHaveBeenCalledWith("last30");
     expect(requestPersist).toHaveBeenCalledWith({ home_usage_period: "last30" });
+  });
+
+  it("persists custom user agents on blur", () => {
+    const setGatewayUserAgent = vi.fn();
+    const setClaudeProviderUserAgent = vi.fn();
+    const requestPersist = vi.fn();
+    vi.mocked(useTheme).mockReturnValue({
+      theme: "system",
+      resolvedTheme: "light",
+      setTheme: vi.fn(),
+    } as any);
+
+    const view = renderSettingsMainColumn({
+      gatewayUserAgent: "",
+      setGatewayUserAgent,
+      claudeProviderUserAgent: "",
+      setClaudeProviderUserAgent,
+      requestPersist,
+    });
+
+    const rows = screen.getAllByRole("textbox");
+    const gatewayInput = rows[0];
+    const claudeInput = rows[1];
+
+    fireEvent.change(gatewayInput, { target: { value: "gateway-agent/1" } });
+    expect(setGatewayUserAgent).toHaveBeenCalledWith("gateway-agent/1");
+
+    view.rerender(
+      <QueryClientProvider client={view.client}>
+        <SettingsMainColumn {...view.props} gatewayUserAgent="gateway-agent/1" />
+      </QueryClientProvider>
+    );
+    fireEvent.blur(screen.getAllByRole("textbox")[0]);
+    expect(requestPersist).toHaveBeenCalledWith({
+      gateway_user_agent: "gateway-agent/1",
+    });
+
+    fireEvent.change(claudeInput, { target: { value: "claude-agent/2" } });
+    expect(setClaudeProviderUserAgent).toHaveBeenCalledWith("claude-agent/2");
+
+    view.rerender(
+      <QueryClientProvider client={view.client}>
+        <SettingsMainColumn
+          {...view.props}
+          gatewayUserAgent="gateway-agent/1"
+          claudeProviderUserAgent="claude-agent/2"
+        />
+      </QueryClientProvider>
+    );
+    fireEvent.blur(screen.getAllByRole("textbox")[1]);
+    expect(requestPersist).toHaveBeenCalledWith({
+      claude_provider_user_agent: "claude-agent/2",
+    });
   });
 
   it("reorders homepage overview tabs from settings", () => {

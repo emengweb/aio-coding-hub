@@ -3051,6 +3051,8 @@ export type SettingsUpdate = {
   homeUsagePeriod: HomeUsagePeriod | null;
   gatewayListenMode: GatewayListenMode | null;
   gatewayCustomListenAddress: string | null;
+  gatewayUserAgent: string | null;
+  claudeProviderUserAgent: string | null;
   autoStart: boolean;
   startMinimized: boolean | null;
   trayEnabled: boolean | null;
@@ -3112,6 +3114,8 @@ export type SettingsView = {
   home_usage_period: HomeUsagePeriod;
   gateway_listen_mode: GatewayListenMode;
   gateway_custom_listen_address: string;
+  gateway_user_agent: string;
+  claude_provider_user_agent: string;
   wsl_auto_config: boolean;
   wsl_target_cli: WslTargetCli;
   cli_priority_order: string[];

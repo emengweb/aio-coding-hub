@@ -20,6 +20,10 @@ describe("services/settings/settingsValidation", () => {
     ).toBeNull();
 
     expect(validateSettingsSetInput({ upstreamStreamIdleTimeoutSeconds: 60 })).toBeNull();
+    expect(validateSettingsSetInput({ gatewayUserAgent: "" })).toBeNull();
+    expect(validateSettingsSetInput({ gatewayUserAgent: "custom-agent/1" })).toBeNull();
+    expect(validateSettingsSetInput({ claudeProviderUserAgent: "" })).toBeNull();
+    expect(validateSettingsSetInput({ claudeProviderUserAgent: "claude-agent/2" })).toBeNull();
   });
 
   it("rejects numeric settings outside backend bounds before IPC", () => {
@@ -45,6 +49,12 @@ describe("services/settings/settingsValidation", () => {
     expect(validateSettingsSetInput({ circuitBreakerOpenDurationMinutes: 1441 })).toContain(
       "熔断打开时长必须 <= 1440"
     );
+    expect(validateSettingsSetInput({ gatewayUserAgent: "x".repeat(513) })).toContain(
+      "网关 User-Agent 必须 <= 512 字符"
+    );
+    expect(validateSettingsSetInput({ claudeProviderUserAgent: "x".repeat(513) })).toContain(
+      "Claude 供应商 User-Agent 必须 <= 512 字符"
+    );
   });
 
   it("rejects fractional values and stream idle timeout values in the forbidden gap", () => {
@@ -54,6 +64,12 @@ describe("services/settings/settingsValidation", () => {
     );
     expect(validateSettingsSetInput({ upstreamStreamIdleTimeoutSeconds: 3601 })).toContain(
       "流式空闲超时必须 <= 3600"
+    );
+    expect(validateSettingsSetInput({ gatewayUserAgent: "bad\nagent" })).toContain(
+      "网关 User-Agent 不能包含控制字符"
+    );
+    expect(validateSettingsSetInput({ claudeProviderUserAgent: "bad\nagent" })).toContain(
+      "Claude 供应商 User-Agent 不能包含控制字符"
     );
   });
 

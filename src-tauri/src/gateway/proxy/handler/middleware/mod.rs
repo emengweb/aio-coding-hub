@@ -157,6 +157,8 @@ impl<R: tauri::Runtime> ProxyContext<R> {
             enable_response_fixer: rs.enable_response_fixer,
             response_fixer_stream_config: rs.response_fixer_stream_config,
             response_fixer_non_stream_config: rs.response_fixer_non_stream_config,
+            gateway_user_agent: rs.gateway_user_agent,
+            claude_provider_user_agent: rs.claude_provider_user_agent,
         }
     }
 }

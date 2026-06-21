@@ -36,6 +36,8 @@ type SettingsPersistPatch = Partial<{
   auto_start: boolean;
   start_minimized: boolean;
   tray_enabled: boolean;
+  gateway_user_agent: string;
+  claude_provider_user_agent: string;
   enable_debug_log: boolean;
 }>;
 
@@ -79,6 +81,10 @@ export type SettingsMainColumnProps = {
   setStartMinimized: (next: boolean) => void;
   trayEnabled: boolean;
   setTrayEnabled: (next: boolean) => void;
+  gatewayUserAgent: string;
+  setGatewayUserAgent: (next: string) => void;
+  claudeProviderUserAgent: string;
+  setClaudeProviderUserAgent: (next: string) => void;
   logRetentionDays: number;
   setLogRetentionDays: (next: number) => void;
   enableDebugLog: boolean;
@@ -120,6 +126,10 @@ export function SettingsMainColumn({
   setStartMinimized,
   trayEnabled,
   setTrayEnabled,
+  gatewayUserAgent,
+  setGatewayUserAgent,
+  claudeProviderUserAgent,
+  setClaudeProviderUserAgent,
   logRetentionDays,
   setLogRetentionDays,
   enableDebugLog,
@@ -255,6 +265,38 @@ export function SettingsMainColumn({
               className="w-28 font-mono"
               min={1024}
               max={65535}
+              disabled={settingsInputsDisabled}
+            />
+          </SettingsRow>
+
+          <SettingsRow
+            label="网关 User-Agent"
+            subtitle="发送到上游 API 的默认 User-Agent；留空使用 aio-coding-hub-gateway/{当前版本号}。"
+          >
+            <Input
+              type="text"
+              value={gatewayUserAgent}
+              onChange={(e) => setGatewayUserAgent(e.currentTarget.value)}
+              onBlur={(e) => requestPersist({ gateway_user_agent: e.currentTarget.value })}
+              onKeyDown={blurOnEnter}
+              placeholder="留空使用当前版本号"
+              className="w-full font-mono sm:w-80"
+              disabled={settingsInputsDisabled}
+            />
+          </SettingsRow>
+
+          <SettingsRow
+            label="Claude User-Agent"
+            subtitle="发送到 Claude 供应商上游 API 的 User-Agent；留空使用上面的网关 User-Agent。"
+          >
+            <Input
+              type="text"
+              value={claudeProviderUserAgent}
+              onChange={(e) => setClaudeProviderUserAgent(e.currentTarget.value)}
+              onBlur={(e) => requestPersist({ claude_provider_user_agent: e.currentTarget.value })}
+              onKeyDown={blurOnEnter}
+              placeholder="留空使用网关 User-Agent"
+              className="w-full font-mono sm:w-80"
               disabled={settingsInputsDisabled}
             />
           </SettingsRow>

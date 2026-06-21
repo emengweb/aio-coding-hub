@@ -22,13 +22,15 @@ const DEFAULT_CLI_PROXY_STATUS: CliProxyStatus[] = [
 
 // Default settings matching the Rust backend defaults.
 const DEFAULT_SETTINGS: AppSettings = {
-  schema_version: 32,
+  schema_version: 34,
   preferred_port: 37123,
   show_home_heatmap: true,
   show_home_usage: true,
   home_usage_period: "last15",
   gateway_listen_mode: "localhost",
   gateway_custom_listen_address: "",
+  gateway_user_agent: "",
+  claude_provider_user_agent: "",
   wsl_auto_config: false,
   wsl_target_cli: { claude: true, codex: true, gemini: true },
   cli_priority_order: ["claude", "codex", "gemini"],

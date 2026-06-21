@@ -80,6 +80,12 @@ pub struct AppSettings {
     pub gateway_listen_mode: GatewayListenMode,
     // Custom listen address input (host or host:port).
     pub gateway_custom_listen_address: String,
+    // Optional full User-Agent for outbound gateway requests. Empty = use the current app version.
+    #[serde(default = "default_gateway_user_agent")]
+    pub gateway_user_agent: String,
+    // Optional full User-Agent for Claude provider requests. Empty = use gateway_user_agent.
+    #[serde(default = "default_claude_provider_user_agent")]
+    pub claude_provider_user_agent: String,
     // WSL auto-config enable switch and target CLI selection.
     pub wsl_auto_config: bool,
     pub wsl_target_cli: WslTargetCli,
@@ -169,6 +175,8 @@ impl Default for AppSettings {
             home_usage_period: HomeUsagePeriod::default(),
             gateway_listen_mode: GatewayListenMode::Localhost,
             gateway_custom_listen_address: String::new(),
+            gateway_user_agent: DEFAULT_GATEWAY_USER_AGENT.to_string(),
+            claude_provider_user_agent: DEFAULT_CLAUDE_PROVIDER_USER_AGENT.to_string(),
             wsl_auto_config: false,
             wsl_target_cli: WslTargetCli::default(),
             cli_priority_order: default_cli_priority_order(),
@@ -238,6 +246,14 @@ fn default_show_home_heatmap() -> bool {
 
 fn default_show_home_usage() -> bool {
     DEFAULT_SHOW_HOME_USAGE
+}
+
+fn default_gateway_user_agent() -> String {
+    DEFAULT_GATEWAY_USER_AGENT.to_string()
+}
+
+fn default_claude_provider_user_agent() -> String {
+    DEFAULT_CLAUDE_PROVIDER_USER_AGENT.to_string()
 }
 
 pub(super) fn default_cli_priority_order() -> Vec<String> {

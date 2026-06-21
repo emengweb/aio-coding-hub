@@ -122,6 +122,8 @@ describe("settings/useSettingsPersistence", () => {
         tray_enabled: undefined,
         show_home_usage: undefined,
         home_usage_period: undefined,
+        gateway_user_agent: undefined,
+        claude_provider_user_agent: undefined,
         provider_cooldown_seconds: undefined,
         provider_base_url_ping_cache_ttl_seconds: undefined,
         upstream_first_byte_timeout_seconds: undefined,
@@ -152,6 +154,8 @@ describe("settings/useSettingsPersistence", () => {
     expect(result.current.showHomeUsage).toBe(true);
     expect(result.current.homeUsagePeriod).toBe("last15");
     expect(result.current.cliPriorityOrder).toEqual(["claude", "codex", "gemini"]);
+    expect(result.current.gatewayUserAgent).toBe("");
+    expect(result.current.claudeProviderUserAgent).toBe("");
   });
 
   it("marks ready and toasts when settings query errors", async () => {
@@ -544,6 +548,47 @@ describe("settings/useSettingsPersistence", () => {
       )
     );
     expect(result.current.homeUsagePeriod).toBe("month");
+  });
+
+  it("persists gateway and Claude provider user agent changes", async () => {
+    vi.mocked(useSettingsQuery).mockReturnValue({
+      data: createSettings(),
+      isLoading: false,
+      isError: false,
+      error: null,
+    } as any);
+
+    const mutation = { mutateAsync: vi.fn() };
+    mutation.mutateAsync.mockResolvedValue(
+      createSettingsMutationResult({
+        gateway_user_agent: "gateway-agent/1",
+        claude_provider_user_agent: "claude-agent/2",
+      })
+    );
+    vi.mocked(useSettingsSetMutation).mockReturnValue(mutation as any);
+
+    const { result } = renderHook(() => useSettingsPersistence({ gateway: null, about: null }));
+    await waitFor(() => expect(result.current.settingsReady).toBe(true));
+
+    act(() => {
+      result.current.setGatewayUserAgent("gateway-agent/1");
+      result.current.setClaudeProviderUserAgent("claude-agent/2");
+      result.current.requestPersist({
+        gateway_user_agent: "gateway-agent/1",
+        claude_provider_user_agent: "claude-agent/2",
+      });
+    });
+
+    await waitFor(() =>
+      expect(mutation.mutateAsync).toHaveBeenCalledWith(
+        expect.objectContaining({
+          gatewayUserAgent: "gateway-agent/1",
+          claudeProviderUserAgent: "claude-agent/2",
+        })
+      )
+    );
+    expect(result.current.gatewayUserAgent).toBe("gateway-agent/1");
+    expect(result.current.claudeProviderUserAgent).toBe("claude-agent/2");
   });
 
   it("no-ops when requestPersist does not change any keys", async () => {

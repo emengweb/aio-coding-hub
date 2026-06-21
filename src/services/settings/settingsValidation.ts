@@ -8,6 +8,7 @@ export const MAX_UPDATE_RELEASES_URL_LEN = 2048;
 export const MAX_UPSTREAM_PROXY_URL_LEN = 2048;
 export const MAX_UPSTREAM_PROXY_USERNAME_LEN = 256;
 export const MAX_UPSTREAM_PROXY_PASSWORD_LEN = 4096;
+export const MAX_USER_AGENT_LEN = 512;
 export const MAX_CX2CC_MODEL_NAME_LEN = 128;
 export const MAX_CX2CC_OPTIONAL_FIELD_LEN = 64;
 export const MIN_PREFERRED_PORT = 1024;
@@ -188,6 +189,26 @@ export function validateUpdateReleasesUrl(value: string): string | null {
   return null;
 }
 
+export function validateUserAgent(label: string, value: string | null | undefined): string | null {
+  const raw = value?.trim() ?? "";
+  if (!raw) return null;
+  if (utf8Length(raw) > MAX_USER_AGENT_LEN) {
+    return `${label} 必须 <= ${MAX_USER_AGENT_LEN} 字符`;
+  }
+  if (CONTROL_CHAR_PATTERN.test(raw)) {
+    return `${label} 不能包含控制字符`;
+  }
+  return null;
+}
+
+export function validateGatewayUserAgent(value: string | null | undefined): string | null {
+  return validateUserAgent("网关 User-Agent", value);
+}
+
+export function validateClaudeProviderUserAgent(value: string | null | undefined): string | null {
+  return validateUserAgent("Claude 供应商 User-Agent", value);
+}
+
 type UpstreamProxyValidationInput = {
   enabled?: boolean | null;
   requireUrl?: boolean;
@@ -305,6 +326,8 @@ export type SettingsSetValidationInput = {
   circuitBreakerOpenDurationMinutes?: number | null;
   gatewayListenMode?: GatewayListenMode | null;
   gatewayCustomListenAddress?: string | null;
+  gatewayUserAgent?: string | null;
+  claudeProviderUserAgent?: string | null;
   wslHostAddressMode?: WslHostAddressMode | null;
   wslCustomHostAddress?: string | null;
   updateReleasesUrl?: string | null;
@@ -392,6 +415,12 @@ export function validateSettingsSetInput(input: SettingsSetValidationInput): str
     const message = validateGatewayCustomListenAddress(input.gatewayCustomListenAddress);
     if (message) return message;
   }
+
+  const gatewayUserAgentMessage = validateGatewayUserAgent(input.gatewayUserAgent);
+  if (gatewayUserAgentMessage) return gatewayUserAgentMessage;
+
+  const claudeUserAgentMessage = validateClaudeProviderUserAgent(input.claudeProviderUserAgent);
+  if (claudeUserAgentMessage) return claudeUserAgentMessage;
 
   if (input.wslHostAddressMode === "custom" && input.wslCustomHostAddress != null) {
     const message = validateWslCustomHostAddress(input.wslCustomHostAddress);

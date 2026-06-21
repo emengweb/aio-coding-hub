@@ -44,6 +44,8 @@ pub(crate) struct SettingsUpdate {
     pub home_usage_period: Option<settings::HomeUsagePeriod>,
     pub gateway_listen_mode: Option<settings::GatewayListenMode>,
     pub gateway_custom_listen_address: Option<String>,
+    pub gateway_user_agent: Option<String>,
+    pub claude_provider_user_agent: Option<String>,
     pub auto_start: bool,
     pub start_minimized: Option<bool>,
     pub tray_enabled: Option<bool>,
@@ -137,6 +139,8 @@ pub(crate) struct SettingsView {
     pub home_usage_period: settings::HomeUsagePeriod,
     pub gateway_listen_mode: settings::GatewayListenMode,
     pub gateway_custom_listen_address: String,
+    pub gateway_user_agent: String,
+    pub claude_provider_user_agent: String,
     pub wsl_auto_config: bool,
     pub wsl_target_cli: settings::WslTargetCli,
     pub cli_priority_order: Vec<String>,
@@ -256,6 +260,8 @@ impl From<&settings::AppSettings> for SettingsView {
             home_usage_period: value.home_usage_period,
             gateway_listen_mode: value.gateway_listen_mode,
             gateway_custom_listen_address: value.gateway_custom_listen_address.clone(),
+            gateway_user_agent: value.gateway_user_agent.clone(),
+            claude_provider_user_agent: value.claude_provider_user_agent.clone(),
             wsl_auto_config: value.wsl_auto_config,
             wsl_target_cli: value.wsl_target_cli,
             cli_priority_order: value.cli_priority_order.clone(),
@@ -540,6 +546,8 @@ pub(crate) async fn settings_set_impl(
         home_usage_period,
         gateway_listen_mode,
         gateway_custom_listen_address,
+        gateway_user_agent,
+        claude_provider_user_agent,
         auto_start,
         start_minimized,
         tray_enabled,
@@ -618,6 +626,14 @@ pub(crate) async fn settings_set_impl(
             let home_usage_period = home_usage_period.unwrap_or(previous.home_usage_period);
             let gateway_custom_listen_address = gateway_custom_listen_address
                 .unwrap_or(previous.gateway_custom_listen_address.clone())
+                .trim()
+                .to_string();
+            let gateway_user_agent = gateway_user_agent
+                .unwrap_or(previous.gateway_user_agent.clone())
+                .trim()
+                .to_string();
+            let claude_provider_user_agent = claude_provider_user_agent
+                .unwrap_or(previous.claude_provider_user_agent.clone())
                 .trim()
                 .to_string();
             let wsl_auto_config = wsl_auto_config.unwrap_or(previous.wsl_auto_config);
@@ -751,6 +767,8 @@ pub(crate) async fn settings_set_impl(
                 home_usage_period,
                 gateway_listen_mode,
                 gateway_custom_listen_address,
+                gateway_user_agent,
+                claude_provider_user_agent,
                 wsl_auto_config,
                 wsl_target_cli,
                 cli_priority_order,
@@ -1049,10 +1067,20 @@ mod tests {
             "cx2CcEnableReasoningToThinking": true,
             "cx2CcDropStopSequences": true,
             "cx2CcCleanSchema": false,
-            "cx2CcFilterBatchTool": true
+            "cx2CcFilterBatchTool": true,
+            "gatewayUserAgent": "gateway-agent/1",
+            "claudeProviderUserAgent": "claude-agent/2"
         });
 
         let update: SettingsUpdate = serde_json::from_value(json).expect("should deserialize");
+        assert_eq!(
+            update.gateway_user_agent.as_deref(),
+            Some("gateway-agent/1")
+        );
+        assert_eq!(
+            update.claude_provider_user_agent.as_deref(),
+            Some("claude-agent/2")
+        );
         assert_eq!(update.cx2cc_fallback_model_opus.as_deref(), Some("gpt-5"));
         assert_eq!(
             update.cx2cc_fallback_model_sonnet.as_deref(),
@@ -1086,5 +1114,7 @@ mod tests {
         assert!(update.cx2cc_model_reasoning_effort.is_none());
         assert!(update.cx2cc_fallback_model_opus.is_none());
         assert!(update.cx2cc_filter_batch_tool.is_none());
+        assert!(update.gateway_user_agent.is_none());
+        assert!(update.claude_provider_user_agent.is_none());
     }
 }

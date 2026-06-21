@@ -2,9 +2,14 @@
 
 use std::time::Duration;
 
-pub const SCHEMA_VERSION: u32 = 33;
+pub const SCHEMA_VERSION: u32 = 34;
 pub const DEFAULT_GATEWAY_PORT: u16 = 37123;
 pub const MAX_GATEWAY_PORT: u16 = 37199;
+pub(super) const DEFAULT_GATEWAY_USER_AGENT_PREFIX: &str = "aio-coding-hub-gateway/";
+pub(super) const DEFAULT_GATEWAY_USER_AGENT_VERSION_SUFFIX: &str = env!("CARGO_PKG_VERSION");
+pub(super) const DEFAULT_GATEWAY_USER_AGENT: &str = "";
+pub(super) const DEFAULT_CLAUDE_PROVIDER_USER_AGENT: &str = "";
+pub(super) const MAX_USER_AGENT_LEN: usize = 512;
 pub const DEFAULT_PROVIDER_COOLDOWN_SECONDS: u32 = 30;
 pub const DEFAULT_PROVIDER_BASE_URL_PING_CACHE_TTL_SECONDS: u32 = 60;
 pub const DEFAULT_UPSTREAM_FIRST_BYTE_TIMEOUT_SECONDS: u32 = 30;
@@ -40,6 +45,7 @@ pub(super) const SCHEMA_VERSION_RAISE_STREAM_IDLE_TIMEOUT_DEFAULT: u32 = 30;
 pub(super) const SCHEMA_VERSION_ADD_UPSTREAM_PROXY: u32 = 31;
 pub(super) const SCHEMA_VERSION_ADD_UPSTREAM_PROXY_CREDENTIALS: u32 = 32;
 pub(super) const SCHEMA_VERSION_ADD_CODEX_OAUTH_COMPATIBLE_PROXY_MODE: u32 = 33;
+pub(super) const SCHEMA_VERSION_ADD_USER_AGENT_SETTINGS: u32 = 34;
 
 pub(super) const DEFAULT_LOG_RETENTION_DAYS: u32 = 7;
 pub(super) const MAX_LOG_RETENTION_DAYS: u32 = 3650;
@@ -94,3 +100,26 @@ pub(super) const LEGACY_IDENTIFIER: &str = "io.aio.gateway";
 pub(super) const DEFAULT_UPDATE_RELEASES_URL: &str =
     "https://github.com/dyndynjyxa/aio-coding-hub/releases";
 pub(super) const CACHE_TTL: Duration = Duration::from_secs(5);
+
+pub(crate) fn default_gateway_user_agent_value() -> String {
+    format!("{DEFAULT_GATEWAY_USER_AGENT_PREFIX}{DEFAULT_GATEWAY_USER_AGENT_VERSION_SUFFIX}")
+}
+
+pub(crate) fn gateway_user_agent_value(configured: Option<&str>) -> String {
+    configured
+        .map(str::trim)
+        .filter(|value| !value.is_empty())
+        .map(str::to_string)
+        .unwrap_or_else(default_gateway_user_agent_value)
+}
+
+pub(crate) fn claude_provider_user_agent_value(
+    configured: Option<&str>,
+    gateway_configured: Option<&str>,
+) -> String {
+    configured
+        .map(str::trim)
+        .filter(|value| !value.is_empty())
+        .map(str::to_string)
+        .unwrap_or_else(|| gateway_user_agent_value(gateway_configured))
+}

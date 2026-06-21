@@ -628,9 +628,21 @@ fn migrate_add_codex_oauth_compatible_proxy_mode(
     )
 }
 
+fn migrate_add_user_agent_settings(
+    settings: &mut AppSettings,
+    schema_version_present: bool,
+) -> bool {
+    // v34: Add optional full User-Agent settings. Empty keeps the current gateway default/fallback.
+    migrate_bump_schema_version(
+        settings,
+        schema_version_present,
+        SCHEMA_VERSION_ADD_USER_AGENT_SETTINGS,
+    )
+}
+
 type SettingsMigration = fn(&mut AppSettings, bool) -> bool;
 
-const SETTINGS_MIGRATIONS: [SettingsMigration; 27] = [
+const SETTINGS_MIGRATIONS: [SettingsMigration; 28] = [
     migrate_disable_upstream_timeouts,
     migrate_add_gateway_rectifiers,
     migrate_add_circuit_breaker_notice,
@@ -658,6 +670,7 @@ const SETTINGS_MIGRATIONS: [SettingsMigration; 27] = [
     migrate_add_upstream_proxy,
     migrate_add_upstream_proxy_credentials,
     migrate_add_codex_oauth_compatible_proxy_mode,
+    migrate_add_user_agent_settings,
 ];
 
 fn apply_settings_migrations(settings: &mut AppSettings, schema_version_present: bool) -> bool {
@@ -1123,6 +1136,13 @@ mod tests {
     }
 
     #[test]
+    fn app_settings_default_user_agent_settings_are_empty() {
+        let s = AppSettings::default();
+        assert!(s.gateway_user_agent.is_empty());
+        assert!(s.claude_provider_user_agent.is_empty());
+    }
+
+    #[test]
     fn migrate_add_codex_oauth_compatible_proxy_mode_bumps_schema_version() {
         let mut s = AppSettings {
             schema_version: 32,
@@ -1134,6 +1154,18 @@ mod tests {
             SCHEMA_VERSION_ADD_CODEX_OAUTH_COMPATIBLE_PROXY_MODE
         );
         assert!(!s.codex_oauth_compatible_proxy_mode);
+    }
+
+    #[test]
+    fn migrate_add_user_agent_settings_bumps_schema_version() {
+        let mut s = AppSettings {
+            schema_version: 33,
+            ..Default::default()
+        };
+        assert!(migrate_add_user_agent_settings(&mut s, true));
+        assert_eq!(s.schema_version, SCHEMA_VERSION_ADD_USER_AGENT_SETTINGS);
+        assert!(s.gateway_user_agent.is_empty());
+        assert!(s.claude_provider_user_agent.is_empty());
     }
 
     #[test]

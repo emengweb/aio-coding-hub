@@ -518,6 +518,12 @@ pub fn settings_set_via_command_json<R: tauri::Runtime>(
     if let Some(value) = update.gateway_custom_listen_address {
         next.gateway_custom_listen_address = value;
     }
+    if let Some(value) = update.gateway_user_agent {
+        next.gateway_user_agent = value;
+    }
+    if let Some(value) = update.claude_provider_user_agent {
+        next.claude_provider_user_agent = value;
+    }
     if let Some(value) = update.wsl_host_address_mode {
         next.wsl_host_address_mode = value;
     }
@@ -554,6 +560,8 @@ pub fn settings_set_via_command_json<R: tauri::Runtime>(
 
     next.update_releases_url = next.update_releases_url.trim().to_string();
     next.gateway_custom_listen_address = next.gateway_custom_listen_address.trim().to_string();
+    next.gateway_user_agent = next.gateway_user_agent.trim().to_string();
+    next.claude_provider_user_agent = next.claude_provider_user_agent.trim().to_string();
     next.wsl_custom_host_address = next.wsl_custom_host_address.trim().to_string();
     next.cx2cc_fallback_model_opus = next.cx2cc_fallback_model_opus.trim().to_string();
     next.cx2cc_fallback_model_sonnet = next.cx2cc_fallback_model_sonnet.trim().to_string();

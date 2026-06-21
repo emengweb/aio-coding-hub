@@ -127,6 +127,47 @@ fn validate_optional_bounded_string(field: &str, value: &str, max_len: usize) ->
     validate_no_control_chars(field, raw)
 }
 
+fn validate_gateway_user_agent_value(value: &str) -> AppResult<()> {
+    let raw = value.trim();
+    if raw.len() > MAX_USER_AGENT_LEN {
+        return Err(format!(
+            "SEC_INVALID_INPUT: gateway_user_agent must be <= {MAX_USER_AGENT_LEN} characters"
+        )
+        .into());
+    }
+    validate_no_control_chars("gateway_user_agent", raw)?;
+
+    let user_agent = gateway_user_agent_value(Some(raw));
+    reqwest::header::HeaderValue::from_str(&user_agent).map_err(|err| {
+        crate::shared::error::AppError::from(format!(
+            "SEC_INVALID_INPUT: gateway_user_agent must produce a valid User-Agent header: {err}"
+        ))
+    })?;
+    Ok(())
+}
+
+fn validate_claude_provider_user_agent_value(
+    value: &str,
+    gateway_user_agent: &str,
+) -> AppResult<()> {
+    let raw = value.trim();
+    if raw.len() > MAX_USER_AGENT_LEN {
+        return Err(format!(
+            "SEC_INVALID_INPUT: claude_provider_user_agent must be <= {MAX_USER_AGENT_LEN} characters"
+        )
+        .into());
+    }
+    validate_no_control_chars("claude_provider_user_agent", raw)?;
+
+    let user_agent = claude_provider_user_agent_value(Some(raw), Some(gateway_user_agent));
+    reqwest::header::HeaderValue::from_str(&user_agent).map_err(|err| {
+        crate::shared::error::AppError::from(format!(
+            "SEC_INVALID_INPUT: claude_provider_user_agent must produce a valid User-Agent header: {err}"
+        ))
+    })?;
+    Ok(())
+}
+
 pub(super) fn parse_settings_json(
     content: &str,
 ) -> AppResult<(AppSettings, bool, serde_json::Value)> {
@@ -265,6 +306,11 @@ pub(crate) fn validate_bounds(settings: &AppSettings) -> AppResult<()> {
             &settings.gateway_custom_listen_address,
         )?;
     }
+    validate_gateway_user_agent_value(&settings.gateway_user_agent)?;
+    validate_claude_provider_user_agent_value(
+        &settings.claude_provider_user_agent,
+        &settings.gateway_user_agent,
+    )?;
     if settings.wsl_host_address_mode == WslHostAddressMode::Custom {
         crate::shared::listen_address::parse_custom_host_address(
             &settings.wsl_custom_host_address,
@@ -451,6 +497,8 @@ pub fn write<R: tauri::Runtime>(
     let mut settings = settings.clone();
     settings.cli_priority_order = normalize_cli_priority_order(&settings.cli_priority_order);
     settings.update_releases_url = settings.update_releases_url.trim().to_string();
+    settings.gateway_user_agent = settings.gateway_user_agent.trim().to_string();
+    settings.claude_provider_user_agent = settings.claude_provider_user_agent.trim().to_string();
     settings.upstream_proxy_url = settings.upstream_proxy_url.trim().to_string();
     settings.upstream_proxy_username = settings.upstream_proxy_username.trim().to_string();
     settings.cx2cc_fallback_model_opus = settings.cx2cc_fallback_model_opus.trim().to_string();
@@ -547,6 +595,8 @@ mod tests {
         assert_eq!(settings.log_retention_days, DEFAULT_LOG_RETENTION_DAYS);
         assert!(settings.tray_enabled);
         assert!(!settings.auto_start);
+        assert!(settings.gateway_user_agent.is_empty());
+        assert!(settings.claude_provider_user_agent.is_empty());
     }
 
     #[test]
@@ -618,6 +668,51 @@ mod tests {
         let err = validate_bounds(&settings).unwrap_err().to_string();
 
         assert!(err.contains("custom listen address must be host or host:port"));
+    }
+
+    #[test]
+    fn validate_bounds_accepts_custom_gateway_user_agent() {
+        let settings = AppSettings {
+            gateway_user_agent: "custom-agent".to_string(),
+            ..Default::default()
+        };
+
+        validate_bounds(&settings).expect("valid custom user agent");
+    }
+
+    #[test]
+    fn validate_bounds_rejects_invalid_gateway_user_agent() {
+        let settings = AppSettings {
+            gateway_user_agent: "bad\nagent".to_string(),
+            ..Default::default()
+        };
+
+        let err = validate_bounds(&settings).unwrap_err().to_string();
+
+        assert!(err.contains("gateway_user_agent"));
+    }
+
+    #[test]
+    fn validate_bounds_accepts_custom_claude_provider_user_agent() {
+        let settings = AppSettings {
+            gateway_user_agent: "gateway-agent/1".to_string(),
+            claude_provider_user_agent: "claude-agent/2".to_string(),
+            ..Default::default()
+        };
+
+        validate_bounds(&settings).expect("valid custom claude provider user agent");
+    }
+
+    #[test]
+    fn validate_bounds_rejects_invalid_claude_provider_user_agent() {
+        let settings = AppSettings {
+            claude_provider_user_agent: "bad\nagent".to_string(),
+            ..Default::default()
+        };
+
+        let err = validate_bounds(&settings).unwrap_err().to_string();
+
+        assert!(err.contains("claude_provider_user_agent"));
     }
 
     #[test]

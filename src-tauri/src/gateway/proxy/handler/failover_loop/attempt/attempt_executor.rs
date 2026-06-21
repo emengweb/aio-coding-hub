@@ -194,6 +194,19 @@ where
     headers = semantic_headers;
     let upstream_body = body_state_for_attempt
         .finalize_for_upstream(&mut headers, crate::gateway::util::max_request_body_bytes());
+    if let Err(err) = crate::gateway::http_client::apply_configured_upstream_user_agent(
+        &mut headers,
+        &input.cli_key,
+        &input.gateway_user_agent,
+        &input.claude_provider_user_agent,
+    ) {
+        tracing::warn!(
+            trace_id = %input.trace_id,
+            cli_key = %input.cli_key,
+            "failed to apply configured upstream User-Agent: {}",
+            err
+        );
+    }
 
     emit_upstream_attempt_fingerprint(
         ctx,

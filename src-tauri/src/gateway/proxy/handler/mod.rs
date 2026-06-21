@@ -424,6 +424,14 @@ mod tests {
         assert!(runtime.verbose_provider_error);
         assert!(!runtime.intercept_warmup);
         assert!(runtime.enable_thinking_signature_rectifier);
+        assert_eq!(
+            runtime.gateway_user_agent,
+            "aio-coding-hub-gateway/".to_string() + env!("CARGO_PKG_VERSION")
+        );
+        assert_eq!(
+            runtime.claude_provider_user_agent,
+            runtime.gateway_user_agent
+        );
         assert_eq!(runtime.cx2cc_settings.fallback_model_main, "gpt-5.4");
         assert!(runtime.cx2cc_settings.disable_response_storage);
         assert!(runtime.enable_response_fixer);
@@ -462,6 +470,20 @@ mod tests {
             runtime.cx2cc_settings.service_tier.as_deref(),
             Some("priority")
         );
+    }
+
+    #[test]
+    fn handler_runtime_settings_uses_gateway_fallback_for_claude() {
+        let cfg = settings::AppSettings {
+            gateway_user_agent: "gateway-agent/1".to_string(),
+            claude_provider_user_agent: String::new(),
+            ..Default::default()
+        };
+
+        let runtime = handler_runtime_settings(Some(&cfg), false);
+
+        assert_eq!(runtime.gateway_user_agent, "gateway-agent/1");
+        assert_eq!(runtime.claude_provider_user_agent, "gateway-agent/1");
     }
 
     #[test]

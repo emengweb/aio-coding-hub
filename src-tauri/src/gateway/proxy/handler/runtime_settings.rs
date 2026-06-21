@@ -26,6 +26,8 @@ pub(super) struct HandlerRuntimeSettings {
     pub(super) upstream_first_byte_timeout_secs: u32,
     pub(super) upstream_stream_idle_timeout_secs: u32,
     pub(super) upstream_request_timeout_non_streaming_secs: u32,
+    pub(super) gateway_user_agent: String,
+    pub(super) claude_provider_user_agent: String,
 }
 
 pub(super) fn handler_runtime_settings(
@@ -83,6 +85,17 @@ pub(super) fn handler_runtime_settings(
         max_providers_to_try = 1;
     }
 
+    let gateway_user_agent =
+        settings::gateway_user_agent_value(settings_cfg.map(|cfg| cfg.gateway_user_agent.as_str()));
+    let claude_provider_user_agent = settings_cfg
+        .map(|cfg| {
+            settings::claude_provider_user_agent_value(
+                Some(cfg.claude_provider_user_agent.as_str()),
+                Some(cfg.gateway_user_agent.as_str()),
+            )
+        })
+        .unwrap_or_else(|| settings::claude_provider_user_agent_value(None, None));
+
     HandlerRuntimeSettings {
         verbose_provider_error,
         intercept_warmup: settings_cfg
@@ -131,5 +144,7 @@ pub(super) fn handler_runtime_settings(
         upstream_request_timeout_non_streaming_secs: settings_cfg
             .map(|cfg| cfg.upstream_request_timeout_non_streaming_seconds)
             .unwrap_or(settings::DEFAULT_UPSTREAM_REQUEST_TIMEOUT_NON_STREAMING_SECONDS),
+        gateway_user_agent,
+        claude_provider_user_agent,
     }
 }

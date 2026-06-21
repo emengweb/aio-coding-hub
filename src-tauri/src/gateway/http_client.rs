@@ -7,6 +7,7 @@ use crate::settings::{self, AppSettings, GatewayListenMode};
 use crate::{gateway::listen, wsl};
 use if_addrs::get_if_addrs;
 use reqwest::dns::{Addrs, Name, Resolve, Resolving};
+use reqwest::header::{HeaderMap, HeaderValue, USER_AGENT};
 use reqwest::{Client, StatusCode, Url};
 use std::collections::BTreeSet;
 use std::env;
@@ -114,6 +115,35 @@ pub(crate) fn sync_from_settings(settings: &AppSettings) -> Result<(), String> {
     validate_proxy_with_context(proxy_url.as_deref(), &context)?;
     set_gateway_self_context(context);
     apply_proxy(proxy_url.as_deref())
+}
+
+pub(crate) fn configured_upstream_user_agent(
+    cli_key: &str,
+    gateway_user_agent: &str,
+    claude_provider_user_agent: &str,
+) -> String {
+    if cli_key == "claude" {
+        settings::claude_provider_user_agent_value(
+            Some(claude_provider_user_agent),
+            Some(gateway_user_agent),
+        )
+    } else {
+        settings::gateway_user_agent_value(Some(gateway_user_agent))
+    }
+}
+
+pub(crate) fn apply_configured_upstream_user_agent(
+    headers: &mut HeaderMap,
+    cli_key: &str,
+    gateway_user_agent: &str,
+    claude_provider_user_agent: &str,
+) -> Result<(), String> {
+    let user_agent =
+        configured_upstream_user_agent(cli_key, gateway_user_agent, claude_provider_user_agent);
+    let value = HeaderValue::from_str(&user_agent)
+        .map_err(|err| format!("Invalid upstream User-Agent '{}': {err}", user_agent))?;
+    headers.insert(USER_AGENT, value);
+    Ok(())
 }
 
 pub(crate) fn self_check_context_from_settings(
@@ -957,6 +987,17 @@ mod tests {
         (format!("http://127.0.0.1:{}/", addr.port()), rx)
     }
 
+    fn request_header_value(request: &str, name: &str) -> Option<String> {
+        request.lines().find_map(|line| {
+            let (header_name, header_value) = line.split_once(':')?;
+            if header_name.eq_ignore_ascii_case(name) {
+                Some(header_value.trim().to_string())
+            } else {
+                None
+            }
+        })
+    }
+
     #[test]
     fn test_mask_url() {
         assert_eq!(mask_url("http://127.0.0.1:7890"), "http://127.0.0.1:7890");
@@ -1353,5 +1394,120 @@ mod tests {
             .recv_timeout(Duration::from_secs(3))
             .expect("origin should receive direct request");
         assert!(direct_request.starts_with("GET / HTTP/1.1"));
+    }
+
+    #[tokio::test(flavor = "current_thread")]
+    async fn test_configured_upstream_user_agent_overrides_request_header() {
+        let _guard = crate::test_support::test_env_lock();
+        for key in [
+            "HTTP_PROXY",
+            "http_proxy",
+            "HTTPS_PROXY",
+            "https_proxy",
+            "ALL_PROXY",
+            "all_proxy",
+        ] {
+            std::env::remove_var(key);
+        }
+
+        apply_proxy(None).expect("reset client before upstream UA test");
+
+        let (origin_url, request_rx) = spawn_http_origin_server();
+        let mut headers = HeaderMap::new();
+        headers.insert(USER_AGENT, HeaderValue::from_static("client-agent/0"));
+        apply_configured_upstream_user_agent(
+            &mut headers,
+            "codex",
+            "gateway-agent/1",
+            "claude-agent/2",
+        )
+        .expect("apply configured upstream user agent");
+
+        let response = get()
+            .get(&origin_url)
+            .headers(headers)
+            .send()
+            .await
+            .expect("direct request with configured upstream user agent");
+        assert_eq!(response.status(), StatusCode::OK);
+
+        let request = request_rx
+            .recv_timeout(Duration::from_secs(3))
+            .expect("origin should receive direct request");
+        assert_eq!(
+            request_header_value(&request, "user-agent"),
+            Some("gateway-agent/1".to_string())
+        );
+
+        apply_proxy(None).expect("reset client after upstream UA test");
+    }
+
+    #[tokio::test(flavor = "current_thread")]
+    async fn test_claude_upstream_user_agent_uses_custom_or_gateway_fallback() {
+        let _guard = crate::test_support::test_env_lock();
+        for key in [
+            "HTTP_PROXY",
+            "http_proxy",
+            "HTTPS_PROXY",
+            "https_proxy",
+            "ALL_PROXY",
+            "all_proxy",
+        ] {
+            std::env::remove_var(key);
+        }
+
+        apply_proxy(None).expect("reset client before claude UA test");
+
+        let (fallback_url, fallback_rx) = spawn_http_origin_server();
+        let mut fallback_headers = HeaderMap::new();
+        fallback_headers.insert(USER_AGENT, HeaderValue::from_static("client-agent/0"));
+        apply_configured_upstream_user_agent(
+            &mut fallback_headers,
+            "claude",
+            "gateway-agent/1",
+            "",
+        )
+        .expect("apply claude fallback user agent");
+        let fallback_response = get()
+            .get(&fallback_url)
+            .headers(fallback_headers)
+            .send()
+            .await
+            .expect("direct request with claude fallback user agent");
+        assert_eq!(fallback_response.status(), StatusCode::OK);
+        let fallback_request = fallback_rx
+            .recv_timeout(Duration::from_secs(3))
+            .expect("origin should receive fallback request");
+        assert_eq!(
+            request_header_value(&fallback_request, "user-agent"),
+            Some("gateway-agent/1".to_string())
+        );
+
+        let (custom_url, custom_rx) = spawn_http_origin_server();
+        let mut custom_headers = HeaderMap::new();
+        custom_headers.insert(USER_AGENT, HeaderValue::from_static("client-agent/0"));
+        apply_configured_upstream_user_agent(
+            &mut custom_headers,
+            "claude",
+            "gateway-agent/1",
+            "claude-agent/2",
+        )
+        .expect("apply claude custom user agent");
+        let custom_response = get()
+            .get(&custom_url)
+            .headers(custom_headers)
+            .send()
+            .await
+            .expect("direct request with claude custom user agent");
+        assert_eq!(custom_response.status(), StatusCode::OK);
+        let custom_request = custom_rx
+            .recv_timeout(Duration::from_secs(3))
+            .expect("origin should receive custom request");
+        assert_eq!(
+            request_header_value(&custom_request, "user-agent"),
+            Some("claude-agent/2".to_string())
+        );
+
+        apply_proxy(None).expect("reset client after claude UA test");
     }
 }

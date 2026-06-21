@@ -153,6 +153,8 @@ describe("pages/settings/settingsPersistenceModel", () => {
       autoStart: false,
       startMinimized: false,
       trayEnabled: true,
+      gatewayUserAgent: "",
+      claudeProviderUserAgent: "",
       logRetentionDays: 7,
       providerCooldownSeconds: 30,
       providerBaseUrlPingCacheTtlSeconds: 60,

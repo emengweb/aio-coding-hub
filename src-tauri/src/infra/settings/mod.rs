@@ -6,6 +6,7 @@ mod persistence;
 mod types;
 
 // Re-export public API (preserves identical surface for all consumers).
+pub(crate) use defaults::{claude_provider_user_agent_value, gateway_user_agent_value};
 pub use defaults::{
     DEFAULT_CX2CC_FALLBACK_MODEL, DEFAULT_GATEWAY_PORT,
     DEFAULT_PROVIDER_BASE_URL_PING_CACHE_TTL_SECONDS, DEFAULT_PROVIDER_COOLDOWN_SECONDS,

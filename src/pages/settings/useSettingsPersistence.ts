@@ -101,6 +101,18 @@ export function useSettingsPersistence(options: {
     },
     [setField]
   );
+  const setGatewayUserAgent = useCallback(
+    (next: string) => {
+      setField("gateway_user_agent", next);
+    },
+    [setField]
+  );
+  const setClaudeProviderUserAgent = useCallback(
+    (next: string) => {
+      setField("claude_provider_user_agent", next);
+    },
+    [setField]
+  );
   const setLogRetentionDays = useCallback(
     (next: number) => {
       setField("log_retention_days", next);
@@ -136,6 +148,10 @@ export function useSettingsPersistence(options: {
     setStartMinimized,
     trayEnabled: draft.tray_enabled,
     setTrayEnabled,
+    gatewayUserAgent: draft.gateway_user_agent,
+    setGatewayUserAgent,
+    claudeProviderUserAgent: draft.claude_provider_user_agent,
+    setClaudeProviderUserAgent,
     logRetentionDays: draft.log_retention_days,
     setLogRetentionDays,
     enableDebugLog: draft.enable_debug_log,

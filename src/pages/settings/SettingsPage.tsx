@@ -45,6 +45,10 @@ export function SettingsPage() {
             setStartMinimized={persistence.setStartMinimized}
             trayEnabled={persistence.trayEnabled}
             setTrayEnabled={persistence.setTrayEnabled}
+            gatewayUserAgent={persistence.gatewayUserAgent}
+            setGatewayUserAgent={persistence.setGatewayUserAgent}
+            claudeProviderUserAgent={persistence.claudeProviderUserAgent}
+            setClaudeProviderUserAgent={persistence.setClaudeProviderUserAgent}
             logRetentionDays={persistence.logRetentionDays}
             setLogRetentionDays={persistence.setLogRetentionDays}
             enableDebugLog={persistence.enableDebugLog}

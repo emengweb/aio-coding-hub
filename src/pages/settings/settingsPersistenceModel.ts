@@ -10,6 +10,10 @@ import {
   normalizeCliPriorityOrder,
 } from "../../services/cli/cliPriorityOrder";
 import { pickSettingsSetInputFieldsFromView } from "../../services/settings/settings";
+import {
+  validateClaudeProviderUserAgent,
+  validateGatewayUserAgent,
+} from "../../services/settings/settingsValidation";
 import { DEFAULT_HOME_USAGE_PERIOD } from "../../utils/homeUsagePeriod";
 
 export type PersistedSettings = {
@@ -21,6 +25,8 @@ export type PersistedSettings = {
   auto_start: boolean;
   start_minimized: boolean;
   tray_enabled: boolean;
+  gateway_user_agent: string;
+  claude_provider_user_agent: string;
   log_retention_days: number;
   provider_cooldown_seconds: number;
   provider_base_url_ping_cache_ttl_seconds: number;
@@ -52,6 +58,8 @@ export const DEFAULT_PERSISTED_SETTINGS: PersistedSettings = {
   auto_start: false,
   start_minimized: false,
   tray_enabled: true,
+  gateway_user_agent: "",
+  claude_provider_user_agent: "",
   log_retention_days: 7,
   provider_cooldown_seconds: 30,
   provider_base_url_ping_cache_ttl_seconds: 60,
@@ -84,6 +92,8 @@ const PERSISTED_SETTINGS_INPUT_KEYS = [
   "autoStart",
   "startMinimized",
   "trayEnabled",
+  "gatewayUserAgent",
+  "claudeProviderUserAgent",
   "logRetentionDays",
   "providerCooldownSeconds",
   "providerBaseUrlPingCacheTtlSeconds",
@@ -170,6 +180,9 @@ export function buildPersistedSettingsSnapshot(
     auto_start: settingsValue.auto_start,
     start_minimized: settingsValue.start_minimized ?? fallback.start_minimized,
     tray_enabled: settingsValue.tray_enabled ?? fallback.tray_enabled,
+    gateway_user_agent: settingsValue.gateway_user_agent ?? fallback.gateway_user_agent,
+    claude_provider_user_agent:
+      settingsValue.claude_provider_user_agent ?? fallback.claude_provider_user_agent,
     log_retention_days: settingsValue.log_retention_days,
     provider_cooldown_seconds:
       settingsValue.provider_cooldown_seconds ?? fallback.provider_cooldown_seconds,
@@ -237,6 +250,16 @@ export function validatePersistedSettings(desired: PersistedSettings, keys: Pers
     if (!isIntegerInRange(desired.provider_cooldown_seconds, 0, 3600)) {
       return "短熔断冷却必须为 0-3600 秒";
     }
+  }
+
+  if (keys.includes("gateway_user_agent")) {
+    const message = validateGatewayUserAgent(desired.gateway_user_agent);
+    if (message) return message;
+  }
+
+  if (keys.includes("claude_provider_user_agent")) {
+    const message = validateClaudeProviderUserAgent(desired.claude_provider_user_agent);
+    if (message) return message;
   }
 
   if (keys.includes("provider_base_url_ping_cache_ttl_seconds")) {

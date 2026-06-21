@@ -59,6 +59,8 @@ pub(super) struct RequestContext<R: tauri::Runtime = tauri::Wry> {
     pub(super) enable_response_fixer: bool,
     pub(super) response_fixer_stream_config: response_fixer::ResponseFixerConfig,
     pub(super) response_fixer_non_stream_config: response_fixer::ResponseFixerConfig,
+    pub(super) gateway_user_agent: String,
+    pub(super) claude_provider_user_agent: String,
 }
 
 impl<R: tauri::Runtime> RequestContext<R> {
@@ -107,6 +109,8 @@ impl<R: tauri::Runtime> RequestContext<R> {
             enable_response_fixer,
             response_fixer_stream_config,
             response_fixer_non_stream_config,
+            gateway_user_agent,
+            claude_provider_user_agent,
         } = parts;
 
         let max_attempts_per_provider = Self::normalize_max_attempts_per_provider(
@@ -191,6 +195,8 @@ impl<R: tauri::Runtime> RequestContext<R> {
             enable_response_fixer,
             response_fixer_stream_config,
             response_fixer_non_stream_config,
+            gateway_user_agent,
+            claude_provider_user_agent,
         }
     }
 
@@ -291,4 +297,6 @@ pub(super) struct RequestContextParts<R: tauri::Runtime = tauri::Wry> {
     pub(super) enable_response_fixer: bool,
     pub(super) response_fixer_stream_config: response_fixer::ResponseFixerConfig,
     pub(super) response_fixer_non_stream_config: response_fixer::ResponseFixerConfig,
+    pub(super) gateway_user_agent: String,
+    pub(super) claude_provider_user_agent: String,
 }
