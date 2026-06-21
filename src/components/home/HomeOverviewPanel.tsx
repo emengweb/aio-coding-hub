@@ -817,6 +817,7 @@ export function HomeOverviewPanel({
                   <HomeTodayProviderUsageOverview
                     devPreviewEnabled={devPreviewEnabled}
                     activeSessions={displayedActiveSessions}
+                    requestLogs={requestLogs}
                     traces={traces}
                   />
                 </div>
