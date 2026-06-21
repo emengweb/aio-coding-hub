@@ -271,7 +271,7 @@ export function SettingsMainColumn({
 
           <SettingsRow
             label="网关 User-Agent"
-            subtitle="发送到上游 API 的默认 User-Agent；留空使用 aio-coding-hub-gateway/{当前版本号}。"
+            subtitle="发送到上游 API 的 User-Agent；留空则原样转发请求中的 User-Agent。"
           >
             <Input
               type="text"
@@ -279,7 +279,7 @@ export function SettingsMainColumn({
               onChange={(e) => setGatewayUserAgent(e.currentTarget.value)}
               onBlur={(e) => requestPersist({ gateway_user_agent: e.currentTarget.value })}
               onKeyDown={blurOnEnter}
-              placeholder="留空使用当前版本号"
+              placeholder="留空转发请求 User-Agent"
               className="w-full font-mono sm:w-80"
               disabled={settingsInputsDisabled}
             />
@@ -287,7 +287,7 @@ export function SettingsMainColumn({
 
           <SettingsRow
             label="Claude User-Agent"
-            subtitle="发送到 Claude 供应商上游 API 的 User-Agent；留空使用上面的网关 User-Agent。"
+            subtitle="发送到 Claude 供应商上游 API 的 User-Agent；留空则使用网关 User-Agent，网关也为空时原样转发。"
           >
             <Input
               type="text"
@@ -295,7 +295,7 @@ export function SettingsMainColumn({
               onChange={(e) => setClaudeProviderUserAgent(e.currentTarget.value)}
               onBlur={(e) => requestPersist({ claude_provider_user_agent: e.currentTarget.value })}
               onKeyDown={blurOnEnter}
-              placeholder="留空使用网关 User-Agent"
+              placeholder="留空按网关设置处理"
               className="w-full font-mono sm:w-80"
               disabled={settingsInputsDisabled}
             />

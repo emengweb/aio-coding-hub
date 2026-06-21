@@ -121,15 +121,16 @@ pub(crate) fn configured_upstream_user_agent(
     cli_key: &str,
     gateway_user_agent: &str,
     claude_provider_user_agent: &str,
-) -> String {
+) -> Option<String> {
     if cli_key == "claude" {
-        settings::claude_provider_user_agent_value(
-            Some(claude_provider_user_agent),
-            Some(gateway_user_agent),
-        )
-    } else {
-        settings::gateway_user_agent_value(Some(gateway_user_agent))
+        let claude_user_agent = claude_provider_user_agent.trim();
+        if !claude_user_agent.is_empty() {
+            return Some(claude_user_agent.to_string());
+        }
     }
+
+    let gateway_user_agent = gateway_user_agent.trim();
+    (!gateway_user_agent.is_empty()).then(|| gateway_user_agent.to_string())
 }
 
 pub(crate) fn apply_configured_upstream_user_agent(
@@ -138,8 +139,11 @@ pub(crate) fn apply_configured_upstream_user_agent(
     gateway_user_agent: &str,
     claude_provider_user_agent: &str,
 ) -> Result<(), String> {
-    let user_agent =
-        configured_upstream_user_agent(cli_key, gateway_user_agent, claude_provider_user_agent);
+    let Some(user_agent) =
+        configured_upstream_user_agent(cli_key, gateway_user_agent, claude_provider_user_agent)
+    else {
+        return Ok(());
+    };
     let value = HeaderValue::from_str(&user_agent)
         .map_err(|err| format!("Invalid upstream User-Agent '{}': {err}", user_agent))?;
     headers.insert(USER_AGENT, value);
@@ -1397,7 +1401,7 @@ mod tests {
     }
 
     #[test]
-    fn test_configured_upstream_user_agent_overrides_request_header() {
+    fn test_configured_upstream_user_agent_overrides_or_preserves_request_header() {
         let _guard = crate::test_support::test_env_lock();
         for key in [
             "HTTP_PROXY",
@@ -1417,31 +1421,51 @@ mod tests {
             .build()
             .expect("test runtime");
         rt.block_on(async {
-            let (origin_url, request_rx) = spawn_http_origin_server();
-            let mut headers = HeaderMap::new();
-            headers.insert(USER_AGENT, HeaderValue::from_static("client-agent/0"));
+            let (configured_url, configured_rx) = spawn_http_origin_server();
+            let mut configured_headers = HeaderMap::new();
+            configured_headers.insert(USER_AGENT, HeaderValue::from_static("client-agent/0"));
             apply_configured_upstream_user_agent(
-                &mut headers,
+                &mut configured_headers,
                 "codex",
                 "gateway-agent/1",
                 "claude-agent/2",
             )
             .expect("apply configured upstream user agent");
 
-            let response = get()
-                .get(&origin_url)
-                .headers(headers)
+            let configured_response = get()
+                .get(&configured_url)
+                .headers(configured_headers)
                 .send()
                 .await
                 .expect("direct request with configured upstream user agent");
-            assert_eq!(response.status(), StatusCode::OK);
+            assert_eq!(configured_response.status(), StatusCode::OK);
 
-            let request = request_rx
+            let configured_request = configured_rx
                 .recv_timeout(Duration::from_secs(3))
-                .expect("origin should receive direct request");
+                .expect("origin should receive configured request");
             assert_eq!(
-                request_header_value(&request, "user-agent"),
+                request_header_value(&configured_request, "user-agent"),
                 Some("gateway-agent/1".to_string())
+            );
+
+            let (preserved_url, preserved_rx) = spawn_http_origin_server();
+            let mut preserved_headers = HeaderMap::new();
+            preserved_headers.insert(USER_AGENT, HeaderValue::from_static("client-agent/0"));
+            apply_configured_upstream_user_agent(&mut preserved_headers, "codex", "", "")
+                .expect("preserve inbound user agent when gateway setting is empty");
+            let preserved_response = get()
+                .get(&preserved_url)
+                .headers(preserved_headers)
+                .send()
+                .await
+                .expect("direct request with preserved upstream user agent");
+            assert_eq!(preserved_response.status(), StatusCode::OK);
+            let preserved_request = preserved_rx
+                .recv_timeout(Duration::from_secs(3))
+                .expect("origin should receive preserved request");
+            assert_eq!(
+                request_header_value(&preserved_request, "user-agent"),
+                Some("client-agent/0".to_string())
             );
         });
 
@@ -1517,6 +1541,26 @@ mod tests {
             assert_eq!(
                 request_header_value(&custom_request, "user-agent"),
                 Some("claude-agent/2".to_string())
+            );
+
+            let (preserved_url, preserved_rx) = spawn_http_origin_server();
+            let mut preserved_headers = HeaderMap::new();
+            preserved_headers.insert(USER_AGENT, HeaderValue::from_static("client-agent/0"));
+            apply_configured_upstream_user_agent(&mut preserved_headers, "claude", "", "")
+                .expect("preserve inbound user agent when claude and gateway settings are empty");
+            let preserved_response = get()
+                .get(&preserved_url)
+                .headers(preserved_headers)
+                .send()
+                .await
+                .expect("direct request with preserved claude user agent");
+            assert_eq!(preserved_response.status(), StatusCode::OK);
+            let preserved_request = preserved_rx
+                .recv_timeout(Duration::from_secs(3))
+                .expect("origin should receive preserved claude request");
+            assert_eq!(
+                request_header_value(&preserved_request, "user-agent"),
+                Some("client-agent/0".to_string())
             );
         });
 

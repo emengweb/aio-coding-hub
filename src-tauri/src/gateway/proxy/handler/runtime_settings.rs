@@ -85,16 +85,12 @@ pub(super) fn handler_runtime_settings(
         max_providers_to_try = 1;
     }
 
-    let gateway_user_agent =
-        settings::gateway_user_agent_value(settings_cfg.map(|cfg| cfg.gateway_user_agent.as_str()));
+    let gateway_user_agent = settings_cfg
+        .map(|cfg| cfg.gateway_user_agent.trim().to_string())
+        .unwrap_or_default();
     let claude_provider_user_agent = settings_cfg
-        .map(|cfg| {
-            settings::claude_provider_user_agent_value(
-                Some(cfg.claude_provider_user_agent.as_str()),
-                Some(cfg.gateway_user_agent.as_str()),
-            )
-        })
-        .unwrap_or_else(|| settings::claude_provider_user_agent_value(None, None));
+        .map(|cfg| cfg.claude_provider_user_agent.trim().to_string())
+        .unwrap_or_default();
 
     HandlerRuntimeSettings {
         verbose_provider_error,
