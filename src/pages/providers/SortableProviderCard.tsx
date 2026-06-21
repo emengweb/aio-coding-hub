@@ -9,16 +9,7 @@ import { useMemo, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import {
-  Copy,
-  FlaskConical,
-  GripVertical,
-  Pencil,
-  RefreshCw,
-  Terminal,
-  Trash2,
-  Zap,
-} from "lucide-react";
+import { Copy, GripVertical, Pencil, RefreshCw, Terminal, Trash2, Zap } from "lucide-react";
 import { FREE_TAG } from "../../constants/providers";
 import type { GatewayProviderCircuitStatus } from "../../services/gateway/gateway";
 import { getGatewayCircuitDerivedState } from "../../query/gateway";
@@ -141,7 +132,6 @@ export type SortableProviderCardProps = {
   onResetCircuit: (provider: ProviderSummary) => void;
   onCopyTerminalLaunchCommand?: (provider: ProviderSummary) => void;
   terminalLaunchCopying?: boolean;
-  onValidateModel?: (provider: ProviderSummary) => void;
   onTestAvailability?: (provider: ProviderSummary) => void;
   testAvailabilityLoading?: boolean;
   onDuplicate?: (provider: ProviderSummary) => void;
@@ -165,7 +155,6 @@ export const ProviderCard = memo(function ProviderCard({
   onResetCircuit,
   onCopyTerminalLaunchCommand,
   terminalLaunchCopying = false,
-  onValidateModel,
   onTestAvailability,
   testAvailabilityLoading = false,
   onDuplicate,
@@ -523,19 +512,6 @@ export const ProviderCard = memo(function ProviderCard({
             >
               <Zap className="h-3.5 w-3.5" />
               {testAvailabilityLoading ? "测试中…" : "测试"}
-            </Button>
-          ) : null}
-
-          {onValidateModel ? (
-            <Button
-              onClick={() => onValidateModel(provider)}
-              variant="secondary"
-              size="sm"
-              className="px-2 py-1 text-[11px] gap-1.5"
-              title="模型验证"
-            >
-              <FlaskConical className="h-3.5 w-3.5" />
-              模型验证
             </Button>
           ) : null}
 

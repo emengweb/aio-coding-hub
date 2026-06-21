@@ -81,18 +81,6 @@ vi.mock("../../../services/providers/providers", async () => {
   };
 });
 
-vi.mock("../../../components/ClaudeModelValidationDialog", () => ({
-  ClaudeModelValidationDialog: ({ open, onOpenChange }: any) =>
-    open ? (
-      <div>
-        validate
-        <button type="button" onClick={() => onOpenChange?.(false)}>
-          close-validate
-        </button>
-      </div>
-    ) : null,
-}));
-
 vi.mock("../ProviderEditorDialog", () => ({
   ProviderEditorDialog: ({ mode, cliKey, provider, initialValues, onSaved, onOpenChange }: any) => (
     <div
@@ -1316,69 +1304,6 @@ describe("pages/providers/ProvidersView", () => {
       </QueryClientProvider>
     );
     await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
-  });
-
-  it("opens validate dialog and closes it when switching activeCli", async () => {
-    vi.mocked(toast).mockClear();
-    vi.mocked(logToConsole).mockClear();
-
-    const providers = [
-      {
-        id: 1,
-        cli_key: "claude",
-        name: "P1",
-        enabled: true,
-        base_urls: ["https://a"],
-        base_url_mode: "order",
-        cost_multiplier: 1,
-        claude_models: { main_model: "claude-3" },
-      },
-    ] as any[];
-
-    vi.mocked(useProvidersListQuery).mockReturnValue({ data: providers, isFetching: false } as any);
-    vi.mocked(useGatewayCircuitStatusQuery).mockReturnValue({
-      data: [],
-      isFetching: false,
-      refetch: vi.fn().mockResolvedValue({ data: [] }),
-    } as any);
-
-    vi.mocked(useProviderSetEnabledMutation).mockReturnValue({ mutateAsync: vi.fn() } as any);
-    vi.mocked(useProviderDeleteMutation).mockReturnValue({ mutateAsync: vi.fn() } as any);
-    vi.mocked(useProvidersReorderMutation).mockReturnValue({ mutateAsync: vi.fn() } as any);
-    vi.mocked(useGatewayCircuitResetProviderMutation).mockReturnValue({
-      mutateAsync: vi.fn(),
-    } as any);
-    vi.mocked(useGatewayCircuitResetCliMutation).mockReturnValue({ mutateAsync: vi.fn() } as any);
-
-    const client = createTestQueryClient();
-    const { rerender } = render(
-      <QueryClientProvider client={client}>
-        <ProvidersView activeCli="claude" setActiveCli={vi.fn()} />
-      </QueryClientProvider>
-    );
-
-    fireEvent.pointerDown(screen.getByText("已启用"));
-    fireEvent.click(screen.getByTitle("模型验证"));
-    expect(screen.getByText("validate")).toBeInTheDocument();
-
-    rerender(
-      <QueryClientProvider client={client}>
-        <ProvidersView activeCli="codex" setActiveCli={vi.fn()} />
-      </QueryClientProvider>
-    );
-
-    await waitFor(() => expect(screen.queryByText("validate")).not.toBeInTheDocument());
-
-    rerender(
-      <QueryClientProvider client={client}>
-        <ProvidersView activeCli="claude" setActiveCli={vi.fn()} />
-      </QueryClientProvider>
-    );
-    fireEvent.click(screen.getByTitle("模型验证"));
-    expect(screen.getByText("validate")).toBeInTheDocument();
-
-    fireEvent.click(screen.getByRole("button", { name: "close-validate" }));
-    await waitFor(() => expect(screen.queryByText("validate")).not.toBeInTheDocument());
   });
 
   it("covers dialog onOpenChange/onSaved callbacks and delete dialog close gating", async () => {

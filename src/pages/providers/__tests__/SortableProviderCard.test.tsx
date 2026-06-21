@@ -529,17 +529,6 @@ describe("pages/providers/SortableProviderCard", () => {
     expect(screen.getByText("终端启动")).toBeInTheDocument();
   });
 
-  it("shows validate model button when callback provided", () => {
-    renderCard(
-      {},
-      {
-        onValidateModel: vi.fn(),
-      }
-    );
-
-    expect(screen.getByText("模型验证")).toBeInTheDocument();
-  });
-
   it("renders limit chips with fixed daily reset", () => {
     renderCard({
       limit_daily_usd: 50,

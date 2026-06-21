@@ -168,8 +168,6 @@ export function useProvidersViewDataModel(activeCli: CliKey) {
   const [testingByProviderId, setTestingByProviderId] = useState<Record<number, boolean>>({});
   const testingByProviderIdRef = useRef<ProviderActionMap>({});
   const togglingByProviderIdRef = useRef<ProviderActionMap>({});
-  const [validateDialogOpen, setValidateDialogOpen] = useState(false);
-  const [validateProvider, setValidateProvider] = useState<ProviderSummary | null>(null);
   const [selectedTags, setSelectedTags] = useState<Set<string>>(new Set());
   const [providerSearch, setProviderSearch] = useState("");
   const [providersRefreshingByCli, setProvidersRefreshingByCli] = useState<
@@ -274,13 +272,6 @@ export function useProvidersViewDataModel(activeCli: CliKey) {
     setEditTarget(null);
     setDeleteTarget(null);
   }, [activeCli]);
-
-  useEffect(() => {
-    if (activeCli !== "claude" && validateDialogOpen) {
-      setValidateDialogOpen(false);
-      setValidateProvider(null);
-    }
-  }, [activeCli, validateDialogOpen]);
 
   useEffect(() => {
     togglingByProviderIdRef.current = {};
@@ -413,12 +404,6 @@ export function useProvidersViewDataModel(activeCli: CliKey) {
     },
     [circuitQuery, resetCircuitCliMutation]
   );
-
-  const requestValidateProviderModel = useCallback((provider: ProviderSummary) => {
-    if (activeCliRef.current !== "claude") return;
-    setValidateProvider(provider);
-    setValidateDialogOpen(true);
-  }, []);
 
   const confirmRemoveProvider = useCallback(async () => {
     if (!deleteTarget || deletingRef.current) return;
@@ -685,7 +670,6 @@ export function useProvidersViewDataModel(activeCli: CliKey) {
     resetCircuit,
     copyTerminalLaunchCommand,
     duplicateProvider,
-    requestValidateProviderModel,
     handleDragEnd,
     handleProviderCardDragEnd,
     sensors,
@@ -697,10 +681,6 @@ export function useProvidersViewDataModel(activeCli: CliKey) {
     setDeleteTarget,
     deleting,
     confirmRemoveProvider,
-    validateDialogOpen,
-    setValidateDialogOpen,
-    validateProvider,
-    setValidateProvider,
     sourceProviderNamesById,
     sourceProvidersById,
     terminalCopyingByProviderId,

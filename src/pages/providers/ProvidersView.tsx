@@ -4,7 +4,6 @@ import { useEffect, useRef } from "react";
 import { Search } from "lucide-react";
 import { DndContext, closestCenter } from "@dnd-kit/core";
 import { SortableContext, verticalListSortingStrategy } from "@dnd-kit/sortable";
-import { ClaudeModelValidationDialog } from "../../components/ClaudeModelValidationDialog";
 import type { CliKey } from "../../services/providers/providers";
 import { Button } from "../../ui/Button";
 import { Dialog } from "../../ui/Dialog";
@@ -52,7 +51,6 @@ export function ProvidersView({ activeCli }: ProvidersViewProps) {
     resetCircuit,
     copyTerminalLaunchCommand,
     duplicateProvider,
-    requestValidateProviderModel,
     handleDragEnd,
     handleProviderCardDragEnd,
     sensors,
@@ -64,10 +62,6 @@ export function ProvidersView({ activeCli }: ProvidersViewProps) {
     setDeleteTarget,
     deleting,
     confirmRemoveProvider,
-    validateDialogOpen,
-    setValidateDialogOpen,
-    validateProvider,
-    setValidateProvider,
     sourceProviderNamesById,
     sourceProvidersById,
     terminalCopyingByProviderId,
@@ -277,9 +271,6 @@ export function ProvidersView({ activeCli }: ProvidersViewProps) {
                           provider.cli_key === "claude" ? copyTerminalLaunchCommand : undefined
                         }
                         terminalLaunchCopying={Boolean(terminalCopyingByProviderId[provider.id])}
-                        onValidateModel={
-                          activeCli === "claude" ? requestValidateProviderModel : undefined
-                        }
                         onTestAvailability={testProviderAvailability}
                         testAvailabilityLoading={Boolean(testingByProviderId[provider.id])}
                         onDuplicate={duplicateProvider}
@@ -341,15 +332,6 @@ export function ProvidersView({ activeCli }: ProvidersViewProps) {
           ) : null}
         </div>
       </div>
-
-      <ClaudeModelValidationDialog
-        open={validateDialogOpen}
-        onOpenChange={(open) => {
-          setValidateDialogOpen(open);
-          if (!open) setValidateProvider(null);
-        }}
-        provider={validateProvider}
-      />
 
       {createDialogState ? (
         <ProviderEditorDialog
