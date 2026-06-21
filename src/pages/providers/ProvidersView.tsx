@@ -1,6 +1,6 @@
 // Usage: Rendered by ProvidersPage when `view === "providers"`.
 
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Search } from "lucide-react";
 import { DndContext, closestCenter } from "@dnd-kit/core";
 import { SortableContext, verticalListSortingStrategy } from "@dnd-kit/sortable";
@@ -72,6 +72,7 @@ export function ProvidersView({ activeCli }: ProvidersViewProps) {
   const enabledProviders = providers.filter((provider) => provider.enabled);
   const providersListScrollRef = useRef<HTMLDivElement | null>(null);
   const pendingProvidersScrollRestoreRef = useRef<PendingProvidersScrollRestore | null>(null);
+  const [clearUsageStatsOnDelete, setClearUsageStatsOnDelete] = useState(false);
 
   useEffect(() => {
     const pendingRestore = pendingProvidersScrollRestoreRef.current;
@@ -110,6 +111,16 @@ export function ProvidersView({ activeCli }: ProvidersViewProps) {
       scrollTop: providersListElement.scrollTop,
       observedRefresh: false,
     };
+  }
+
+  function openDeleteDialog(provider: (typeof providers)[number]) {
+    setClearUsageStatsOnDelete(false);
+    setDeleteTarget(provider);
+  }
+
+  function closeDeleteDialog() {
+    setClearUsageStatsOnDelete(false);
+    setDeleteTarget(null);
   }
 
   return (
@@ -276,7 +287,7 @@ export function ProvidersView({ activeCli }: ProvidersViewProps) {
                         onDuplicate={duplicateProvider}
                         duplicateLoading={Boolean(duplicatingByProviderId[provider.id])}
                         onEdit={setEditTarget}
-                        onDelete={setDeleteTarget}
+                        onDelete={openDeleteDialog}
                       />
                     ))}
                   </div>
@@ -368,19 +379,45 @@ export function ProvidersView({ activeCli }: ProvidersViewProps) {
         open={!!deleteTarget}
         onOpenChange={(nextOpen) => {
           if (!nextOpen && deleting) return;
-          if (!nextOpen) setDeleteTarget(null);
+          if (!nextOpen) closeDeleteDialog();
         }}
         title="确认删除 Provider"
         description={deleteTarget ? `将删除：${deleteTarget.name}` : undefined}
         className="max-w-lg"
       >
-        <div className="flex flex-wrap items-center justify-end gap-2">
-          <Button onClick={() => setDeleteTarget(null)} variant="secondary" disabled={deleting}>
-            取消
-          </Button>
-          <Button onClick={confirmRemoveProvider} variant="primary" disabled={deleting}>
-            {deleting ? "删除中…" : "确认删除"}
-          </Button>
+        <div className="space-y-3">
+          <label className="flex items-start gap-2 rounded-lg border border-border bg-muted p-3">
+            <input
+              type="checkbox"
+              aria-label="同时清理该 Provider 的用量统计"
+              checked={clearUsageStatsOnDelete}
+              onChange={(event) => setClearUsageStatsOnDelete(event.currentTarget.checked)}
+              disabled={deleting}
+              className="mt-0.5 h-4 w-4 shrink-0 rounded border-border bg-background text-primary accent-primary focus:ring-ring"
+            />
+            <span className="min-w-0">
+              <span className="block text-sm font-medium text-foreground">
+                同时清理该 Provider 的用量统计
+              </span>
+              <span className="mt-1 block text-xs text-muted-foreground">
+                清理后该 Provider 不再参与用量统计汇总，请求日志仍会保留。
+              </span>
+            </span>
+          </label>
+          <div className="flex flex-wrap items-center justify-end gap-2">
+            <Button onClick={closeDeleteDialog} variant="secondary" disabled={deleting}>
+              取消
+            </Button>
+            <Button
+              onClick={() =>
+                void confirmRemoveProvider({ clearUsageStats: clearUsageStatsOnDelete })
+              }
+              variant="primary"
+              disabled={deleting}
+            >
+              {deleting ? "删除中…" : "确认删除"}
+            </Button>
+          </div>
         </div>
       </Dialog>
     </>

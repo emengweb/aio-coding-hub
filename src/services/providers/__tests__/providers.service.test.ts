@@ -245,10 +245,19 @@ describe("services/providers/providers", () => {
     expect(commands.providersList).toHaveBeenCalledWith("claude");
     expect(commands.baseUrlPingMs).toHaveBeenCalledWith("https://api.example.com");
     expect(commands.providerSetEnabled).toHaveBeenCalledWith(1, true);
-    expect(commands.providerDelete).toHaveBeenCalledWith(1);
+    expect(commands.providerDelete).toHaveBeenCalledWith(1, false);
     expect(commands.providersReorder).toHaveBeenCalledWith("claude", [2, 1]);
     expect(commands.providerClaudeTerminalLaunchCommand).toHaveBeenCalledWith(5);
     expect(commands.providerTestAvailability).toHaveBeenCalledWith(5);
+  });
+
+  it("passes the provider usage stats cleanup flag to IPC", async () => {
+    vi.mocked(commands.providerDelete).mockClear();
+    vi.mocked(commands.providerDelete).mockResolvedValue({ status: "ok", data: true });
+
+    await providerDelete(1, { clearUsageStats: true });
+
+    expect(commands.providerDelete).toHaveBeenCalledWith(1, true);
   });
 
   it("normalizes provider cli keys before IPC", async () => {

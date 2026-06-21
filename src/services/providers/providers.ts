@@ -65,6 +65,12 @@ export type ProviderSummary = Override<
   }
 >;
 
+type ProviderDeleteCommandArgs = Parameters<typeof commands.providerDelete>;
+
+export type ProviderDeleteOptions = {
+  clearUsageStats?: ProviderDeleteCommandArgs[1] | null;
+};
+
 type ProviderUpsertFieldMap = {
   providerId: "providerId";
   cliKey: "cliKey";
@@ -266,15 +272,18 @@ export async function providerSetEnabled(
   });
 }
 
-export async function providerDelete(providerId: number) {
+export async function providerDelete(providerId: number, options: ProviderDeleteOptions = {}) {
   const normalizedProviderId = validateProviderId(providerId);
+  const clearUsageStats = options.clearUsageStats === true;
 
   return invokeGeneratedIpc<boolean>({
     title: "删除供应商失败",
     cmd: "provider_delete",
-    args: { providerId: normalizedProviderId },
+    args: { providerId: normalizedProviderId, clearUsageStats },
     invoke: () =>
-      commands.providerDelete(normalizedProviderId) as Promise<GeneratedCommandResult<boolean>>,
+      commands.providerDelete(normalizedProviderId, clearUsageStats) as Promise<
+        GeneratedCommandResult<boolean>
+      >,
   });
 }
 

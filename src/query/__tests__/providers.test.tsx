@@ -561,9 +561,29 @@ describe("query/providers", () => {
       await result.current.mutateAsync({ cliKey: " claude " as never, providerId: 1 });
     });
 
-    expect(providerDelete).toHaveBeenCalledWith(1);
+    expect(providerDelete).toHaveBeenCalledWith(1, { clearUsageStats: false });
     expect(client.getQueryData(providersKeys.list("claude"))).toEqual([providers[1]]);
     expect(client.getQueryData(providersKeys.list(" claude " as never))).toBeUndefined();
+  });
+
+  it("useProviderDeleteMutation forwards usage stats cleanup choice", async () => {
+    setTauriRuntime();
+
+    vi.mocked(providerDelete).mockResolvedValue(true);
+
+    const client = createTestQueryClient();
+    const wrapper = createQueryWrapper(client);
+
+    const { result } = renderHook(() => useProviderDeleteMutation(), { wrapper });
+    await act(async () => {
+      await result.current.mutateAsync({
+        cliKey: "claude",
+        providerId: 1,
+        clearUsageStats: true,
+      });
+    });
+
+    expect(providerDelete).toHaveBeenCalledWith(1, { clearUsageStats: true });
   });
 
   it("useProviderDeleteMutation is a no-op when service returns false", async () => {

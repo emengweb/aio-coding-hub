@@ -203,7 +203,8 @@ export function useProviderDeleteMutation() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: (input: { cliKey: CliKey; providerId: number }) => providerDelete(input.providerId),
+    mutationFn: (input: { cliKey: CliKey; providerId: number; clearUsageStats?: boolean }) =>
+      providerDelete(input.providerId, { clearUsageStats: input.clearUsageStats === true }),
     onSuccess: (ok, input) => {
       if (!ok) return;
       const cliKey = validateProviderCliKey(input.cliKey);

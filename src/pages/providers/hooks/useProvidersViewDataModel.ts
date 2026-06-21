@@ -405,34 +405,40 @@ export function useProvidersViewDataModel(activeCli: CliKey) {
     [circuitQuery, resetCircuitCliMutation]
   );
 
-  const confirmRemoveProvider = useCallback(async () => {
-    if (!deleteTarget || deletingRef.current) return;
+  const confirmRemoveProvider = useCallback(
+    async (options?: { clearUsageStats?: boolean }) => {
+      if (!deleteTarget || deletingRef.current) return;
+      const clearUsageStats = options?.clearUsageStats === true;
 
-    deletingRef.current = true;
-    setDeleting(true);
-    try {
-      await providerDeleteMutation.mutateAsync({
-        cliKey: deleteTarget.cli_key,
-        providerId: deleteTarget.id,
-      });
+      deletingRef.current = true;
+      setDeleting(true);
+      try {
+        await providerDeleteMutation.mutateAsync({
+          cliKey: deleteTarget.cli_key,
+          providerId: deleteTarget.id,
+          clearUsageStats,
+        });
 
-      logToConsole("info", "删除 Provider", {
-        id: deleteTarget.id,
-        name: deleteTarget.name,
-      });
-      toast("Provider 已删除");
-      setDeleteTarget(null);
-    } catch (error) {
-      logToConsole("error", "删除 Provider 失败", {
-        error: String(error),
-        id: deleteTarget.id,
-      });
-      toast(`删除失败：${String(error)}`);
-    } finally {
-      deletingRef.current = false;
-      setDeleting(false);
-    }
-  }, [deleteTarget, providerDeleteMutation]);
+        logToConsole("info", "删除 Provider", {
+          id: deleteTarget.id,
+          name: deleteTarget.name,
+          clear_usage_stats: clearUsageStats,
+        });
+        toast(clearUsageStats ? "Provider 已删除，相关用量统计已清理" : "Provider 已删除");
+        setDeleteTarget(null);
+      } catch (error) {
+        logToConsole("error", "删除 Provider 失败", {
+          error: String(error),
+          id: deleteTarget.id,
+        });
+        toast(`删除失败：${String(error)}`);
+      } finally {
+        deletingRef.current = false;
+        setDeleting(false);
+      }
+    },
+    [deleteTarget, providerDeleteMutation]
+  );
 
   function terminalLaunchCopiedToastMessage(command: string) {
     const normalized = command.trim().toLowerCase();

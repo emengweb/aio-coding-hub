@@ -501,6 +501,63 @@ fn reorder_rejects_invalid_duplicate_and_oversized_provider_ids() {
         .contains("ordered_provider_ids must contain at most"));
 }
 
+fn seed_usage_request_log(db: &crate::db::Db, trace_id: &str, provider_id: i64) {
+    let conn = db.open_connection().expect("open db connection");
+    conn.execute(
+        r#"
+INSERT INTO request_logs (
+  trace_id, cli_key, method, path, duration_ms, attempts_json, created_at,
+  input_tokens, output_tokens, total_tokens, excluded_from_stats, final_provider_id
+) VALUES (?1, 'claude', 'POST', '/v1/messages', 12, '[]', 100, 10, 5, 15, 0, ?2)
+"#,
+        rusqlite::params![trace_id, provider_id],
+    )
+    .expect("insert request log");
+}
+
+fn usage_excluded_from_stats(db: &crate::db::Db, trace_id: &str) -> bool {
+    let conn = db.open_connection().expect("open db connection");
+    conn.query_row(
+        "SELECT excluded_from_stats FROM request_logs WHERE trace_id = ?1",
+        rusqlite::params![trace_id],
+        |row| row.get::<_, i64>(0),
+    )
+    .expect("read excluded_from_stats")
+        != 0
+}
+
+#[test]
+fn delete_keeps_usage_stats_by_default() {
+    let dir = tempfile::tempdir().expect("tempdir");
+    let db_path = dir.path().join("providers_delete_keep_stats.db");
+    let db = crate::db::init_for_tests(&db_path).expect("init db");
+
+    let saved = upsert(&db, default_provider_params("delete-keep-stats")).expect("save provider");
+    seed_usage_request_log(&db, "trace-delete-keep", saved.id);
+
+    delete(&db, saved.id, false).expect("delete provider");
+
+    assert!(!usage_excluded_from_stats(&db, "trace-delete-keep"));
+}
+
+#[test]
+fn delete_excludes_provider_usage_stats_when_requested() {
+    let dir = tempfile::tempdir().expect("tempdir");
+    let db_path = dir.path().join("providers_delete_clear_stats.db");
+    let db = crate::db::init_for_tests(&db_path).expect("init db");
+
+    let saved = upsert(&db, default_provider_params("delete-clear-stats")).expect("save provider");
+    let other =
+        upsert(&db, default_provider_params("delete-clear-other")).expect("save other provider");
+    seed_usage_request_log(&db, "trace-delete-clear", saved.id);
+    seed_usage_request_log(&db, "trace-delete-other", other.id);
+
+    delete(&db, saved.id, true).expect("delete provider");
+
+    assert!(usage_excluded_from_stats(&db, "trace-delete-clear"));
+    assert!(!usage_excluded_from_stats(&db, "trace-delete-other"));
+}
+
 fn create_oauth_provider_for_cas_test(db: &crate::db::Db, name: &str) -> i64 {
     upsert(
         db,
